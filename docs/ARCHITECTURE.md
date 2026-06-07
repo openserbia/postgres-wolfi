@@ -146,7 +146,8 @@ digest**. So `cosign verify :NN-latest` (which resolves to the index) passes,
 and each arch child is independently signed and SBOM-attested. The arch-suffixed
 date tags remain in the registry as the addressable per-arch handles.
 
-> ⚠️ **These per-arch tags are load-bearing — do not delete them, and never enable
+> [!CAUTION]
+> **These per-arch tags are load-bearing — do not delete them, and never enable
 > GHCR's "delete untagged versions" retention on this package.** A per-arch tag and
 > the matching child of the `:NN-latest` / `:NN-YYYYMMDD` manifest list share one
 > manifest digest (the index references children *by digest*), and GHCR can only
