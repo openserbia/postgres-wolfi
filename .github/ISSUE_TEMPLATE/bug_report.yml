@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: 2026 OpenSerbia
+# SPDX-License-Identifier: MIT
+name: Bug report
+description: Report a defect in the postgres-wolfi image.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do NOT file security vulnerabilities here. Public issues are world-readable.
+        Report vulnerabilities privately per SECURITY.md, via GitHub Security Advisories:
+        https://github.com/openserbia/postgres-wolfi/security/advisories/new
+  - type: input
+    id: image-tag
+    attributes:
+      label: Image tag
+      description: The exact tag you ran (e.g. 18-YYYYMMDD or 18-latest).
+      placeholder: 18-YYYYMMDD
+    validations:
+      required: true
+  - type: textarea
+    id: docker-run
+    attributes:
+      label: docker run invocation
+      description: The full command (and env/flags) used to start the container.
+      render: shell
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened (include docker logs)
+      description: Describe the failure. Paste relevant `docker logs <container>` output.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What you expected to happen instead.
+    validations:
+      required: true
+  - type: input
+    id: host-docker
+    attributes:
+      label: Host / Docker version
+      description: Host OS/arch and `docker version` output.
+      placeholder: e.g. Linux x86_64, Docker 27.x
+    validations:
+      required: true
+  - type: checkboxes
+    id: not-security
+    attributes:
+      label: Acknowledgement
+      options:
+        - label: This is not a security vulnerability report (those go to SECURITY.md / GitHub Security Advisories).
+          required: true

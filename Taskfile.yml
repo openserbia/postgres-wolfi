@@ -1,8 +1,12 @@
+# SPDX-FileCopyrightText: 2026 OpenSerbia
+# SPDX-License-Identifier: MIT
 # https://taskfile.dev
 version: '3'
 
 vars:
   IMAGE: ghcr.io/openserbia/postgres-wolfi
+  # Default major; override per invocation, e.g. `task ci PG_MAJOR=17`.
+  # CI drives one major per matrix leg this way.
   PG_MAJOR: '18'
   DATE:
     sh: date -u +%Y%m%d
@@ -11,7 +15,7 @@ tasks:
   build:
     desc: Build the image (:PG_MAJOR-latest and :PG_MAJOR-DATE)
     cmds:
-      - docker build -t {{.IMAGE}}:{{.PG_MAJOR}}-latest -t {{.IMAGE}}:{{.PG_MAJOR}}-{{.DATE}} .
+      - docker build --build-arg PG_MAJOR={{.PG_MAJOR}} -t {{.IMAGE}}:{{.PG_MAJOR}}-latest -t {{.IMAGE}}:{{.PG_MAJOR}}-{{.DATE}} .
 
   scan:
     desc: Trivy — fail on CRITICAL, report HIGH

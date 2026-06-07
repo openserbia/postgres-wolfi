@@ -4,6 +4,7 @@
 #   source : https://github.com/docker-library/postgres
 #   commit : 32485831e2be041e8a36cf325751ad29c88f8c60
 #   license: MIT (c) Docker, Inc. — see THIRD_PARTY_LICENSES.md
+# SPDX-License-Identifier: MIT
 # Refresh deliberately: bump PIN, re-download, re-test. Do not hand-edit.
 #
 set -Eeo pipefail

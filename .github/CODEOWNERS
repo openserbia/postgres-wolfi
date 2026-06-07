@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 OpenSerbia
+# SPDX-License-Identifier: MIT
+#
+# CODEOWNERS routes review: GitHub auto-requests the listed owner(s) on any PR
+# that touches matching paths. See https://docs.github.com/articles/about-code-owners
+#
+# Default owner for everything in the repo.
+* @OCharnyshevich
+
+# A dedicated maintainers team can be added here once one exists, e.g.
+# * @openserbia/maintainers

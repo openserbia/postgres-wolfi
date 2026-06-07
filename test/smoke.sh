@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 OpenSerbia
+# SPDX-License-Identifier: MIT
 # Smoke test for postgres-wolfi: boots the image on a throwaway volume, verifies
 # init + basic SQL, and that NO process runs as root (layer-1 drop worked).
 # Usage: test/smoke.sh <image-ref>

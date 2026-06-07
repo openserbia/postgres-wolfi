@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 OpenSerbia
+# SPDX-License-Identifier: MIT
+
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Linters are run as plain CLIs (shellcheck preinstalled; hadolint pulled by
+# pinned release URL) rather than via marketplace tool-wrapper actions — same
+# philosophy as build.yml: fewer third-party actions, nothing we don't control.
+jobs:
+  lint:
+    runs-on: ubuntu-latest   # GitHub-hosted — NOT the ax41 self-hosted runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: ShellCheck
+        # shellcheck is preinstalled on ubuntu-latest runners.
+        # docker-entrypoint.sh is intentionally NOT linted: it is vendored
+        # verbatim from docker-library/postgres and must never be hand-edited.
+        run: shellcheck test/*.sh
+
+      - name: hadolint
+        # Pinned hadolint release binary, run directly against the Dockerfile.
+        # TODO: add sha256sum verification of the downloaded binary before relying on this gate
+        run: |
+          curl -fsSL -o hadolint \
+            https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          chmod +x hadolint
+          ./hadolint ./Dockerfile
