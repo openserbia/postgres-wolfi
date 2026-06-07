@@ -9,10 +9,12 @@ on:
   push:
     branches: [main]
 
+# Top-level is read-only; write scopes (packages/id-token) are granted per-job to
+# only the jobs that push/sign — least privilege. The `setup` job inherits this
+# read-only default (it just computes a date). Keeps Scorecard Token-Permissions
+# at 10/10 and stops `setup` from holding GHCR/OIDC write for nothing.
 permissions:
   contents: read
-  packages: write      # push to GHCR
-  id-token: write      # cosign keyless OIDC
 
 concurrency:
   group: build-${{ github.ref }}
@@ -52,6 +54,10 @@ jobs:
 
   build:
     needs: setup
+    permissions:
+      contents: read       # checkout
+      packages: write      # push per-arch tag to GHCR
+      id-token: write      # cosign keyless OIDC
     strategy:
       fail-fast: false             # one major/arch failing must not abort the others
       matrix:
@@ -114,6 +120,10 @@ jobs:
 
   manifest:
     needs: [setup, build]
+    permissions:
+      contents: read
+      packages: write      # push manifest list to GHCR
+      id-token: write      # cosign sign index
     # Run even if some build legs failed (fail-fast: false leaves the rest green);
     # this matrix's own legs fail only for a major whose arch images are missing,
     # so a broken major never yields a published manifest list.
