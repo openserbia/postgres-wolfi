@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="19f306e5-f940-445b-b054-3f8236e44b12" name="Changes" comment="chore: add IntelliJ IDEA project configuration files">
-      <change beforePath="$PROJECT_DIR$/Taskfile.yml" beforeDir="false" afterPath="$PROJECT_DIR$/Taskfile.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/smoke.sh" beforeDir="false" afterPath="$PROJECT_DIR$/test/smoke.sh" afterDir="false" />
+    <list default="true" id="19f306e5-f940-445b-b054-3f8236e44b12" name="Changes" comment="chore: add IntelliJ IDEA project config and enhance smoke test script&#10;&#10;Add `.idea` project configuration files for IntelliJ IDEA. Update `smoke.sh` to validate server major version and improve readiness checks by gating on post-init marker before trusting `pg_isready`. Amend `Taskfile.yml` to pass expected major version to the smoke test.">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/build.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/build.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -110,6 +109,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="chore: add IntelliJ IDEA project configuration files" />
-    <option name="LAST_COMMIT_MESSAGE" value="chore: add IntelliJ IDEA project configuration files" />
+    <MESSAGE value="chore: add IntelliJ IDEA project config and enhance smoke test script&#10;&#10;Add `.idea` project configuration files for IntelliJ IDEA. Update `smoke.sh` to validate server major version and improve readiness checks by gating on post-init marker before trusting `pg_isready`. Amend `Taskfile.yml` to pass expected major version to the smoke test." />
+    <option name="LAST_COMMIT_MESSAGE" value="chore: add IntelliJ IDEA project config and enhance smoke test script&#10;&#10;Add `.idea` project configuration files for IntelliJ IDEA. Update `smoke.sh` to validate server major version and improve readiness checks by gating on post-init marker before trusting `pg_isready`. Amend `Taskfile.yml` to pass expected major version to the smoke test." />
   </component>
 </project>
