@@ -1,0 +1,5 @@
+# build / scan artifacts
+sbom.cdx.json
+results.sarif
+.trivycache/
+*.tmp
