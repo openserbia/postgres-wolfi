@@ -1,0 +1,201 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "cosign@latest": {
+      "last_modified": "2026-05-21T08:15:18Z",
+      "resolved": "github:NixOS/nixpkgs/4a29d733e8a7d5b824c3d8c958a946a9867b3eb2#cosign",
+      "source": "devbox-search",
+      "version": "3.0.6",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/y1sldw8qfr2qh38rww97cs1c18yx4g73-cosign-3.0.6",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/y1sldw8qfr2qh38rww97cs1c18yx4g73-cosign-3.0.6"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/1z9w3cbaxa5667jjfryl1g6hfsgzyxqw-cosign-3.0.6",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/1z9w3cbaxa5667jjfryl1g6hfsgzyxqw-cosign-3.0.6"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/mwqdbdy1v4413xwsiv1a4s105f030bjw-cosign-3.0.6",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/mwqdbdy1v4413xwsiv1a4s105f030bjw-cosign-3.0.6"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/xv0vmmk220vdcp09wn299k182lisyk2c-cosign-3.0.6",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/xv0vmmk220vdcp09wn299k182lisyk2c-cosign-3.0.6"
+        }
+      }
+    },
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "last_modified": "2026-05-15T18:21:44Z",
+      "resolved": "github:NixOS/nixpkgs/d233902339c02a9c334e7e593de68855ad26c4cb?lastModified=1778869304&narHash=sha256-30sZNZoA1cqF5JNO9fVX%2BwgiQYjB7HJqqJ4ztCDeBZE%3D"
+    },
+    "go-task@latest": {
+      "last_modified": "2026-05-21T08:15:18Z",
+      "resolved": "github:NixOS/nixpkgs/4a29d733e8a7d5b824c3d8c958a946a9867b3eb2#go-task",
+      "source": "devbox-search",
+      "version": "3.48.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/hg0sx6ah2pinw09i8s3gwicq1x54gbvn-go-task-3.48.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/hg0sx6ah2pinw09i8s3gwicq1x54gbvn-go-task-3.48.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/6bafb6yz2861yxjljadd1m22v2gryl24-go-task-3.48.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/6bafb6yz2861yxjljadd1m22v2gryl24-go-task-3.48.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/xajpc9zjvhmdmwjab8i8grxc248wnzpq-go-task-3.48.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/xajpc9zjvhmdmwjab8i8grxc248wnzpq-go-task-3.48.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ajlbzd5gnxrs1yki1sjf327rjx7qq060-go-task-3.48.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ajlbzd5gnxrs1yki1sjf327rjx7qq060-go-task-3.48.0"
+        }
+      }
+    },
+    "syft@latest": {
+      "last_modified": "2026-05-21T08:15:18Z",
+      "resolved": "github:NixOS/nixpkgs/4a29d733e8a7d5b824c3d8c958a946a9867b3eb2#syft",
+      "source": "devbox-search",
+      "version": "1.44.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/y1rr83swav2xk15w6hg075akgkizq3ly-syft-1.44.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/y1rr83swav2xk15w6hg075akgkizq3ly-syft-1.44.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/2awmh7ahadiwazsy9nmil856nlfy4zb4-syft-1.44.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/2awmh7ahadiwazsy9nmil856nlfy4zb4-syft-1.44.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/aim01k8jjqgdnr2hignk16wcsc4p1n1d-syft-1.44.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/aim01k8jjqgdnr2hignk16wcsc4p1n1d-syft-1.44.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/chkvqxdgli6ybm3vs6h58f4clyri51am-syft-1.44.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/chkvqxdgli6ybm3vs6h58f4clyri51am-syft-1.44.0"
+        }
+      }
+    },
+    "trivy@latest": {
+      "last_modified": "2026-05-21T08:15:18Z",
+      "resolved": "github:NixOS/nixpkgs/4a29d733e8a7d5b824c3d8c958a946a9867b3eb2#trivy",
+      "source": "devbox-search",
+      "version": "0.69.3",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/azr6y098ln4mq43zapvg86i4875khk92-trivy-0.69.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/azr6y098ln4mq43zapvg86i4875khk92-trivy-0.69.3"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/qhrymnysnwm3qfchhjs4fp2wzv7zg3mm-trivy-0.69.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/qhrymnysnwm3qfchhjs4fp2wzv7zg3mm-trivy-0.69.3"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/1k9712gmvd6h4bwrca5qg7hg67d5k8kr-trivy-0.69.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/1k9712gmvd6h4bwrca5qg7hg67d5k8kr-trivy-0.69.3"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ggln1qc9sfld4fg6k6f7v3ybpdx7ca46-trivy-0.69.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ggln1qc9sfld4fg6k6f7v3ybpdx7ca46-trivy-0.69.3"
+        }
+      }
+    }
+  }
+}
