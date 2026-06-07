@@ -33,9 +33,9 @@ tasks:
       - syft {{.REF}} -o cyclonedx-json=sbom.cdx.json
 
   smoke:
-    desc: Smoke-test the built image
+    desc: Smoke-test the built image (asserts server major == PG_MAJOR)
     cmds:
-      - ./test/smoke.sh {{.REF}}
+      - ./test/smoke.sh {{.REF}} {{.PG_MAJOR}}
 
   ci:
     desc: build -> scan -> sbom -> smoke (no push)
