@@ -6,7 +6,7 @@ FROM cgr.dev/chainguard/wolfi-base:latest
 
 # Wolfi packages: glibc, NO perl (the source of the Debian CRITs we're escaping).
 # gosu ships in wolfi-base's repos; postgres/initdb land on /usr/bin.
-RUN apk add --no-cache postgresql-18 postgresql-18-client gosu tzdata
+RUN apk add --no-cache postgresql-18 postgresql-18-client gosu tzdata bash
 
 # Wolfi's postgresql-18 apk does NOT create a postgres user. Create it with the
 # busybox addgroup/adduser already present (avoids pulling the heavier `shadow`).

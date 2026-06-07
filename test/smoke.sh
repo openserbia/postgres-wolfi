@@ -37,7 +37,7 @@ rows=$(docker exec "$CNAME" psql -U postgres -tAc "SELECT count(*) FROM t;")
 if [ "$rows" != "100" ]; then echo "FAIL: expected 100 rows, got '$rows'"; exit 1; fi
 
 echo "verifying no process runs as root (layer-1 drop)..."
-roots=$(docker top "$CNAME" -o uid,cmd | tail -n +2 | awk '$1==0' | wc -l)
+roots=$(docker top "$CNAME" -o pid,uid,cmd | tail -n +2 | awk '$2==0' | wc -l)
 if [ "$roots" -ne 0 ]; then echo "FAIL: $roots root process(es):"; docker top "$CNAME"; exit 1; fi
 
 echo "SMOKE OK: $IMAGE (rows=$rows, root_procs=0)"
