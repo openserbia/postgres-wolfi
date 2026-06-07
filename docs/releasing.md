@@ -41,6 +41,17 @@ public **multi-arch lists** — the immutable `:NN-YYYYMMDD` and the rolling
 amd64+arm64 manifest whose index is signed and whose per-arch children are each
 signed and SBOM-attested.
 
+> ⚠️ **Do not delete the `:NN-YYYYMMDD-<arch>` tags, and do not enable GHCR's
+> "delete untagged versions" retention on this package.** Each per-arch tag and
+> the corresponding child of the `:NN-latest` / `:NN-YYYYMMDD` manifest list are
+> the **same manifest (one digest)** — the index references the child *by digest*.
+> GHCR (and the GitHub Packages API) can only delete a whole *version*, not "untag
+> while keeping the manifest", so removing a per-arch tag — or pruning untagged
+> versions — deletes the manifest the index points at and **breaks the multi-arch
+> image for that arch**. The per-arch date tags accumulate (~6/week) but are
+> immutable and harmless; leave them. They can only be reclaimed by deleting a
+> whole dated snapshot (index + both children) once that `:NN-YYYYMMDD` is retired.
+
 ## Version uniqueness
 
 There are no semantic version numbers. A release is identified two ways:

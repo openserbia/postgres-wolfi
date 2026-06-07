@@ -146,6 +146,14 @@ digest**. So `cosign verify :NN-latest` (which resolves to the index) passes,
 and each arch child is independently signed and SBOM-attested. The arch-suffixed
 date tags remain in the registry as the addressable per-arch handles.
 
+> ⚠️ **These per-arch tags are load-bearing — do not delete them, and never enable
+> GHCR's "delete untagged versions" retention on this package.** A per-arch tag and
+> the matching child of the `:NN-latest` / `:NN-YYYYMMDD` manifest list share one
+> manifest digest (the index references children *by digest*), and GHCR can only
+> delete whole versions, not just a tag pointer. Deleting a per-arch tag — or
+> pruning untagged versions — therefore removes a manifest the index depends on and
+> breaks the multi-arch image. See the GC note in [`releasing.md`](releasing.md).
+
 ## Supply-chain controls
 
 - **Trivy CRITICAL gate** — build fails on any CRITICAL OS/library CVE; HIGH is
