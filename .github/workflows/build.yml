@@ -20,6 +20,11 @@ env:
   IMAGE: ghcr.io/openserbia/postgres-wolfi
   PG_MAJOR: "18"
 
+# Tooling (trivy, syft, cosign, go-task) comes from the repo's devbox.json via
+# `devbox run` on the ax41 runner — NOT from marketplace tool-wrapper actions.
+# trivy-action was dropped because it internally pins aquasecurity/setup-trivy by
+# a tag we don't control, which broke when upstream retagged it. Running the CLIs
+# directly is race-proof and cuts four third-party actions.
 jobs:
   build:
     runs-on: [self-hosted, ax41]   # bare [self-hosted] lands on rpi -> exit 127
@@ -40,26 +45,8 @@ jobs:
             -t "$IMAGE:$PG_MAJOR-${{ steps.meta.outputs.date }}" \
             .
 
-      - name: Trivy — fail on CRITICAL
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2  # v0.28.0
-        with:
-          image-ref: ${{ env.IMAGE }}:${{ env.PG_MAJOR }}-latest
-          severity: CRITICAL
-          exit-code: "1"
-
-      - name: Trivy — report HIGH (non-gating)
-        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2  # v0.28.0
-        with:
-          image-ref: ${{ env.IMAGE }}:${{ env.PG_MAJOR }}-latest
-          severity: HIGH
-          exit-code: "0"
-
-      - name: SBOM (CycloneDX)
-        uses: anchore/sbom-action@55dc4ee22412511ee8c3142cbea40418e6cec693  # v0.17.8
-        with:
-          image: ${{ env.IMAGE }}:${{ env.PG_MAJOR }}-latest
-          format: cyclonedx-json
-          output-file: sbom.cdx.json
+      - name: Scan (CRITICAL gate) + SBOM + smoke
+        run: devbox run -- task scan sbom smoke
 
       - name: Upload SBOM
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
@@ -68,27 +55,17 @@ jobs:
           path: sbom.cdx.json
           retention-days: 30
 
-      - name: Smoke test
-        run: ./test/smoke.sh "$IMAGE:$PG_MAJOR-latest"
-
       - name: Log in to GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Push
         run: |
           docker push "$IMAGE:$PG_MAJOR-latest"
           docker push "$IMAGE:$PG_MAJOR-${{ steps.meta.outputs.date }}"
 
-      - name: Install cosign
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da  # v3.7.0
-
-      - name: Sign + attest (by digest)
+      - name: Sign + attest (by digest, via devbox cosign)
         run: |
           DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$PG_MAJOR-latest")
           echo "signing $DIGEST"
-          cosign sign --yes "$DIGEST"
-          cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"
+          devbox run -- cosign sign --yes "$DIGEST"
+          devbox run -- cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"
