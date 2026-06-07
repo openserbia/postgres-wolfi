@@ -3,3 +3,8 @@ sbom.cdx.json
 results.sarif
 .trivycache/
 *.tmp
+
+# IDE / local tooling state
+.idea/
+.devbox/
+.code-review-graph/
