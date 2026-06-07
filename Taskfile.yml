@@ -1,0 +1,42 @@
+# https://taskfile.dev
+version: '3'
+
+vars:
+  IMAGE: ghcr.io/openserbia/postgres-wolfi
+  PG_MAJOR: '18'
+  DATE:
+    sh: date -u +%Y%m%d
+
+tasks:
+  build:
+    desc: Build the image (:PG_MAJOR-latest and :PG_MAJOR-DATE)
+    cmds:
+      - docker build -t {{.IMAGE}}:{{.PG_MAJOR}}-latest -t {{.IMAGE}}:{{.PG_MAJOR}}-{{.DATE}} .
+
+  scan:
+    desc: Trivy — fail on CRITICAL, report HIGH
+    cmds:
+      - trivy image --exit-code 1 --severity CRITICAL {{.IMAGE}}:{{.PG_MAJOR}}-latest
+      - trivy image --severity HIGH {{.IMAGE}}:{{.PG_MAJOR}}-latest
+
+  sbom:
+    desc: Generate CycloneDX SBOM
+    cmds:
+      - syft {{.IMAGE}}:{{.PG_MAJOR}}-latest -o cyclonedx-json=sbom.cdx.json
+
+  smoke:
+    desc: Smoke-test the built image
+    cmds:
+      - ./test/smoke.sh {{.IMAGE}}:{{.PG_MAJOR}}-latest
+
+  ci:
+    desc: build -> scan -> sbom -> smoke (no push)
+    cmds:
+      - task: build
+      - task: scan
+      - task: sbom
+      - task: smoke
+
+  default:
+    cmds:
+      - task -l
