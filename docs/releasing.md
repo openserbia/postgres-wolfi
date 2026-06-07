@@ -17,20 +17,29 @@ The build workflow (`.github/workflows/build.yml`) runs:
 - on **push to `main`**;
 - on **manual dispatch** (`workflow_dispatch`).
 
-The workflow runs a **matrix over the supported majors** (`NN` ∈ 16, 17, 18 —
-add 19 once Wolfi ships `postgresql-19`), one leg per major. For each leg, a
-successful run:
+The workflow fans out as a **matrix over the supported majors** (`NN` ∈ 16, 17,
+18 — add 19 once Wolfi ships `postgresql-19`) **× arches** (`amd64`, `arm64`),
+one leg per `(major, arch)`. Each leg runs **natively** on a self-hosted runner of
+its architecture (routed by GitHub's built-in `X64` / `ARM64` labels). For a leg,
+a successful run:
 
-1. builds the image (`--build-arg PG_MAJOR=NN`),
-2. pushes an **immutable** `ghcr.io/openserbia/postgres-wolfi:NN-YYYYMMDD`
-   (the build date), and
-3. moves the **rolling** `:NN-latest` to that same image.
+1. builds the image natively (`--build-arg PG_MAJOR=NN`),
+2. scans → SBOMs → smoke-tests it, then
+3. pushes an **immutable per-arch tag** `:NN-YYYYMMDD-<arch>` and cosign-signs +
+   SBOM-attests it **by digest**.
 
 Pipeline order **per leg** is: build → Trivy scan (fails on CRITICAL; HIGH
 reported, non-gating) → CycloneDX SBOM (syft, `sbom.cdx.json`) → smoke test →
-push to GHCR → cosign keyless sign → cosign attest SBOM. Legs are independent
+push → cosign keyless sign → cosign attest SBOM. Legs are independent
 (`fail-fast: false`): a leg that fails Trivy or the smoke test publishes nothing
-for that major and does not block the others — there is no broken release.
+and does not block the others — there is no broken release.
+
+A final **`manifest` job** (per major) then assembles the two arch images into the
+public **multi-arch lists** — the immutable `:NN-YYYYMMDD` and the rolling
+`:NN-latest` — with `docker buildx imagetools create`, and cosign-signs the
+**manifest-list (index) digest**. So a published `:NN-latest` is an
+amd64+arm64 manifest whose index is signed and whose per-arch children are each
+signed and SBOM-attested.
 
 ## Version uniqueness
 

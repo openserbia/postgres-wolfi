@@ -10,6 +10,10 @@ vars:
   PG_MAJOR: '18'
   DATE:
     sh: date -u +%Y%m%d
+  # Image ref that scan/sbom/smoke operate on. Defaults to the locally-built
+  # :PG_MAJOR-latest; CI overrides it per arch leg, e.g.
+  # `task scan sbom smoke REF=$IMAGE:18-20260607-arm64`.
+  REF: '{{.IMAGE}}:{{.PG_MAJOR}}-latest'
 
 tasks:
   build:
@@ -20,18 +24,18 @@ tasks:
   scan:
     desc: Trivy — fail on CRITICAL, report HIGH
     cmds:
-      - trivy image --exit-code 1 --severity CRITICAL {{.IMAGE}}:{{.PG_MAJOR}}-latest
-      - trivy image --severity HIGH {{.IMAGE}}:{{.PG_MAJOR}}-latest
+      - trivy image --exit-code 1 --severity CRITICAL {{.REF}}
+      - trivy image --severity HIGH {{.REF}}
 
   sbom:
     desc: Generate CycloneDX SBOM
     cmds:
-      - syft {{.IMAGE}}:{{.PG_MAJOR}}-latest -o cyclonedx-json=sbom.cdx.json
+      - syft {{.REF}} -o cyclonedx-json=sbom.cdx.json
 
   smoke:
     desc: Smoke-test the built image
     cmds:
-      - ./test/smoke.sh {{.IMAGE}}:{{.PG_MAJOR}}-latest
+      - ./test/smoke.sh {{.REF}}
 
   ci:
     desc: build -> scan -> sbom -> smoke (no push)

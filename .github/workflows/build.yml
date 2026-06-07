@@ -22,63 +22,130 @@ env:
   IMAGE: ghcr.io/openserbia/postgres-wolfi
 
 # Tooling (trivy, syft, cosign, go-task) comes from the repo's devbox.json via
-# `devbox run` on the ax41 runner — NOT from marketplace tool-wrapper actions.
-# trivy-action was dropped because it internally pins aquasecurity/setup-trivy by
-# a tag we don't control, which broke when upstream retagged it. Running the CLIs
-# directly is race-proof and cuts four third-party actions.
+# `devbox run` on the self-hosted runners — NOT from marketplace tool-wrapper
+# actions. trivy-action was dropped because it internally pins
+# aquasecurity/setup-trivy by a tag we don't control, which broke when upstream
+# retagged it. Running the CLIs directly is race-proof and cuts four third-party
+# actions.
+#
+# Multi-version × multi-arch:
+#   - `build`    fans out over majors (16/17/18) × arches (amd64/arm64). Each leg
+#                builds NATIVELY on a self-hosted runner of its arch — routed by
+#                GitHub's built-in `X64` / `ARM64` labels — scans + smokes on that
+#                real hardware, then pushes a per-arch tag and signs/attests it by
+#                digest. Scan/smoke gate the push, so a bad arch publishes nothing.
+#   - `manifest` stitches each major's two arch images into the public multi-arch
+#                lists (:NN-latest rolling, :NN-YYYYMMDD immutable) and signs the
+#                list (index) digest. Per-arch children are already signed +
+#                SBOM-attested by the build job.
 jobs:
+  setup:
+    # One shared date for the whole run, so the arch legs and the manifest job
+    # can't disagree across a midnight UTC rollover.
+    runs-on: [self-hosted, X64]
+    outputs:
+      date: ${{ steps.meta.outputs.date }}
+    steps:
+      - name: Compute date tag
+        id: meta
+        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
   build:
-    runs-on: [self-hosted, ax41]   # bare [self-hosted] lands on rpi -> exit 127
+    needs: setup
     strategy:
-      fail-fast: false             # one major's scan/build failing must not abort the others
+      fail-fast: false             # one major/arch failing must not abort the others
       matrix:
-        # Each major Wolfi ships as postgresql-NN gets its own :NN-latest / :NN-YYYYMMDD
-        # line, all rebuilt on the weekly cadence. With a single ax41 runner these legs
-        # run serially. Add "19" the day Wolfi publishes postgresql-19 (PG19 GA ~autumn
-        # 2026); until then `apk add postgresql-19` 404s, so it stays out to avoid a
+        # Add "19" the day Wolfi publishes postgresql-19 (PG19 GA ~autumn 2026);
+        # until then `apk add postgresql-19` 404s, so it stays out to avoid a
         # perma-red leg.
         pg: ["16", "17", "18"]
+        arch: ["amd64", "arm64"]
+        include:
+          # Route each arch to a matching self-hosted runner via GitHub's
+          # built-in arch labels — no infra-specific runner names.
+          - arch: amd64
+            runner: X64
+          - arch: arm64
+            runner: ARM64
+    runs-on: [self-hosted, "${{ matrix.runner }}"]
     env:
       PG_MAJOR: ${{ matrix.pg }}
+      ARCH: ${{ matrix.arch }}
+      DATE: ${{ needs.setup.outputs.date }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
 
-      - name: Compute date tag
-        id: meta
-        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
-
+      # Native single-arch build: the runner's hardware arch == matrix.arch, so a
+      # plain `docker build` already produces the correct arch (no buildx/QEMU).
+      # Tagged with an -ARCH suffix; the manifest job assembles these into the
+      # public :NN-latest / :NN-DATE multi-arch lists.
       - name: Build
         run: |
           docker build \
             --build-arg PG_MAJOR="$PG_MAJOR" \
-            -t "$IMAGE:$PG_MAJOR-latest" \
-            -t "$IMAGE:$PG_MAJOR-${{ steps.meta.outputs.date }}" \
+            -t "$IMAGE:$PG_MAJOR-$DATE-$ARCH" \
             .
 
       - name: Scan (CRITICAL gate) + SBOM + smoke
-        run: devbox run -- task scan sbom smoke PG_MAJOR="$PG_MAJOR"
+        run: devbox run -- task scan sbom smoke PG_MAJOR="$PG_MAJOR" REF="$IMAGE:$PG_MAJOR-$DATE-$ARCH"
 
       - name: Upload SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: sbom-${{ matrix.pg }}
+          name: sbom-${{ matrix.pg }}-${{ matrix.arch }}
           path: sbom.cdx.json
           retention-days: 1
 
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      - name: Push
-        run: |
-          docker push "$IMAGE:$PG_MAJOR-latest"
-          docker push "$IMAGE:$PG_MAJOR-${{ steps.meta.outputs.date }}"
+      - name: Push (per-arch tag)
+        run: docker push "$IMAGE:$PG_MAJOR-$DATE-$ARCH"
 
-      - name: Sign + attest (by digest, via devbox cosign)
+      - name: Sign + attest per-arch (by digest, via devbox cosign)
         run: |
-          DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$PG_MAJOR-latest")
+          DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$PG_MAJOR-$DATE-$ARCH")
           echo "signing $DIGEST"
           devbox run -- cosign sign --yes "$DIGEST"
           devbox run -- cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"
+
+  manifest:
+    needs: [setup, build]
+    # Run even if some build legs failed (fail-fast: false leaves the rest green);
+    # this matrix's own legs fail only for a major whose arch images are missing,
+    # so a broken major never yields a published manifest list.
+    if: ${{ !cancelled() && needs.setup.result == 'success' }}
+    runs-on: [self-hosted, X64]
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: ["16", "17", "18"]
+    env:
+      PG_MAJOR: ${{ matrix.pg }}
+      DATE: ${{ needs.setup.outputs.date }}
+    steps:
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Assemble the per-arch images into the public multi-arch manifest lists.
+      # imagetools resolves each source tag to its digest and builds an OCI index;
+      # both the rolling and the dated tag point at the same index.
+      - name: Create + push manifest lists
+        run: |
+          docker buildx imagetools create \
+            -t "$IMAGE:$PG_MAJOR-latest" \
+            -t "$IMAGE:$PG_MAJOR-$DATE" \
+            "$IMAGE:$PG_MAJOR-$DATE-amd64" \
+            "$IMAGE:$PG_MAJOR-$DATE-arm64"
+
+      # Sign the manifest-list (index) digest, so `cosign verify :NN-latest`
+      # (which resolves to the index) passes. Per-arch children were already
+      # signed + SBOM-attested in the build job.
+      - name: Sign manifest list (by digest, via devbox cosign)
+        run: |
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-$DATE" --format '{{.Manifest.Digest}}')
+          echo "signing index $IMAGE@$DIGEST"
+          devbox run -- cosign sign --yes "$IMAGE@$DIGEST"

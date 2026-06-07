@@ -86,9 +86,10 @@ retrievable and verifiable after the fact — not just an ephemeral CI log.
 - [`Taskfile.yml`](../Taskfile.yml) — `sbom` task:
   `syft … -o cyclonedx-json=sbom.cdx.json`.
 - [`.github/workflows/build.yml`](../.github/workflows/build.yml) — the SBOM is
-  produced in the scan/sbom/smoke step, uploaded as a build artifact, and the
-  "Sign + attest" step runs
-  `cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"`.
+  produced **per-arch** in the scan/sbom/smoke step, uploaded as a per-arch build
+  artifact, and the "Sign + attest per-arch" step runs
+  `cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"`
+  against each arch image's digest.
 - Retrieve the attested SBOM from a pulled image (any `:NN-latest`/`:NN-YYYYMMDD`
   tag, ideally by `@sha256:…` digest):
 
@@ -113,9 +114,10 @@ TLS). Anyone can verify before running.
   `cosign verify` command (certificate-identity-regexp pinned to this repo's
   `build.yml`, issuer `token.actions.githubusercontent.com`).
 - [`.github/workflows/build.yml`](../.github/workflows/build.yml) — the
-  "Sign + attest (by digest …)" step resolves the image digest and runs
-  `cosign sign --yes "$DIGEST"`; `permissions: id-token: write` enables the OIDC
-  keyless flow.
+  "Sign + attest per-arch (by digest …)" step in the build job resolves each arch
+  image's digest and runs `cosign sign --yes "$DIGEST"`, and the `manifest` job's
+  "Sign manifest list" step signs the multi-arch index digest;
+  `permissions: id-token: write` enables the OIDC keyless flow.
 
 ### 6. Least privilege at runtime
 
@@ -150,8 +152,8 @@ GitHub-hosted runner and publishes results for outside review.
 - [`devbox.lock`](../devbox.lock) — pins the exact tool versions resolved from
   [`devbox.json`](../devbox.json).
 - [`scorecard.yml`](../.github/workflows/scorecard.yml) — `ossf/scorecard-action`
-  with `publish_results: true`, on a GitHub-hosted `ubuntu-latest` runner (not
-  the `ax41` self-hosted build runner); the Scorecard badge is in the README.
+  with `publish_results: true`, on a GitHub-hosted `ubuntu-latest` runner (not a
+  self-hosted build runner); the Scorecard badge is in the README.
 
 ## Residual risks / out of scope
 

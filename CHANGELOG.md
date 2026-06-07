@@ -28,6 +28,12 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 - Multi-version build matrix: the `:16-*`, `:17-*`, and `:18-*` tag lines are now
   built, Trivy-scanned, smoke-tested, signed, and SBOM-attested in parallel on the
   weekly cadence — previously only `:18-*` was produced.
+- Multi-arch images: each `:NN-latest` / `:NN-YYYYMMDD` tag is now a
+  **`linux/amd64` + `linux/arm64`** manifest list. Each arch is built and
+  smoke-tested **natively** on a self-hosted runner of its architecture (routed by
+  GitHub's built-in `X64` / `ARM64` labels), signed and SBOM-attested per-arch by
+  digest; a `manifest`
+  job assembles the list and signs the index digest.
 
 ### Changed
 

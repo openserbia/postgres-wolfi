@@ -57,9 +57,13 @@ who decides or how decisions are made, it ties back to `GOVERNANCE.md`.
   promote HIGH to a gating severity. This is a deliberate policy change, so it
   goes through whatever review process `GOVERNANCE.md` defines before the
   threshold moves.
-- **Multi-arch builds.** Add `linux/arm64` alongside `amd64`, signed and SBOM'd
-  per-arch under the same tag contract. Build cost and the self-hosted runner
-  story (`docs/ARCHITECTURE.md`) are the constraints here.
+- **Multi-arch builds — delivered.** `linux/arm64` now ships alongside `amd64`:
+  each major's `:NN-latest`/`:NN-YYYYMMDD` is a manifest list, each arch built and
+  smoke-tested natively on a self-hosted runner of that architecture (routed by
+  GitHub's built-in `X64` / `ARM64` labels), signed and SBOM'd per-arch under the
+  same tag contract (`docs/ARCHITECTURE.md`). Remaining follow-on here is
+  build-cost / cache tuning and watching the arm64 leg's reliability under the
+  weekly load.
 - **Expand smoke tests.** Grow `test/smoke.sh` beyond "does it boot" to cover
   restart/persistence across container recreation and `/docker-entrypoint-initdb.d`
   init-script execution, so regressions in the data-volume and bootstrap paths

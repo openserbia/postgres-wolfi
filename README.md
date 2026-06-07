@@ -26,6 +26,10 @@ So `:18-latest`, `:17-latest`, and `:16-latest` track each line independently,
 each with its own dated snapshots. There is intentionally **no `:latest`** and
 **no bare `:NN`** — a database must never be pulled by an unbounded floating tag.
 
+Every tag is a **multi-arch manifest list** (`linux/amd64` + `linux/arm64`),
+each architecture built and smoke-tested natively; `docker pull` resolves to your
+platform automatically.
+
 ```bash
 docker pull ghcr.io/openserbia/postgres-wolfi:18-latest
 ```
