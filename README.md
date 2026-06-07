@@ -1,6 +1,10 @@
 # postgres-wolfi
 
+[![build](https://github.com/openserbia/postgres-wolfi/actions/workflows/build.yml/badge.svg)](https://github.com/openserbia/postgres-wolfi/actions/workflows/build.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/openserbia/postgres-wolfi/badge)](https://scorecard.dev/viewer/?uri=github.com/openserbia/postgres-wolfi)
+[![cosign signed](https://img.shields.io/badge/cosign-signed-blueviolet?logo=sigstore&logoColor=white)](#verify-the-signature)
+[![image size](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=18-latest&label=image%20size&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 <!-- TODO: register at bestpractices.dev, then replace PROJECT_ID and uncomment -->
 <!-- [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID) -->
 

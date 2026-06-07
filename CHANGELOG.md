@@ -42,6 +42,10 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   vendored entrypoint's major-aware checks resolve correctly.
 - `Taskfile.yml` passes `--build-arg PG_MAJOR` through and accepts an override
   (`task ci PG_MAJOR=17`); the build workflow drives one major per matrix leg.
+- Docs (`docs/releasing.md`, `docs/ARCHITECTURE.md`): documented that the per-arch
+  `:NN-YYYYMMDD-<arch>` tags are load-bearing manifest-list children — deleting
+  them, or enabling GHCR's *delete untagged versions* retention, breaks the
+  multi-arch images — surfaced as a GitHub `[!CAUTION]` alert.
 
 ### Fixed
 
