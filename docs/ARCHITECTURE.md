@@ -103,12 +103,14 @@ is staged as a deliberate breaking change rather than folded in silently.
 ## Build & release pipeline
 
 GitHub Actions, triggered **weekly (Monday 06:17 UTC)**, **on push to `main`**,
-and **manually (workflow_dispatch)**. The build runs on a **self-hosted `ax41`
-runner** as a **matrix over the supported majors** (`16`, `17`, `18`), one
-independent leg per major (`fail-fast: false`, so one major failing does not
-abort the others). With a single `ax41` runner the legs execute serially. Every
-stage below operates on a leg's built image, and signing/attestation are done
-**by digest** (not by tag) so the signature binds to exact bytes:
+and **manually (workflow_dispatch)**. The build fans out as a **matrix over the
+supported majors (`16`, `17`, `18`) × arches (`amd64`, `arm64`)** —
+`fail-fast: false`, so one leg failing never aborts the others. Each leg builds
+**natively** on a self-hosted runner of its architecture — routed by GitHub's
+built-in `X64` / `ARM64` labels — so no QEMU is involved and the smoke test
+exercises real hardware. Every stage below operates on that leg's built
+image, and signing/attestation are done **by digest** (not by tag) so the
+signature binds to exact bytes:
 
 ```
   docker build
@@ -123,7 +125,7 @@ stage below operates on a leg's built image, and signing/attestation are done
   smoke test
         │
         ▼
-  push → GHCR
+  push → GHCR  (per-arch tag :NN-DATE-<arch>)
         │
         ▼
   cosign sign   (keyless, by digest)
@@ -135,6 +137,14 @@ stage below operates on a leg's built image, and signing/attestation are done
 A CRITICAL finding fails the build, so a vulnerable image is never pushed. The
 `ci` Taskfile target runs `build → scan → sbom → smoke` locally with **no push**,
 mirroring everything up to the publish step.
+
+Once all arch legs of a major succeed, a separate **`manifest` job** stitches the
+per-arch images (`:NN-DATE-amd64`, `:NN-DATE-arm64`) into the public multi-arch
+lists — the rolling `:NN-latest` and the immutable `:NN-YYYYMMDD` — with
+`docker buildx imagetools create`, then cosign-signs the **manifest-list (index)
+digest**. So `cosign verify :NN-latest` (which resolves to the index) passes,
+and each arch child is independently signed and SBOM-attested. The arch-suffixed
+date tags remain in the registry as the addressable per-arch handles.
 
 ## Supply-chain controls
 

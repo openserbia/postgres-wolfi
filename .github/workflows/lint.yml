@@ -20,7 +20,7 @@ concurrency:
 # philosophy as build.yml: fewer third-party actions, nothing we don't control.
 jobs:
   lint:
-    runs-on: ubuntu-latest   # GitHub-hosted — NOT the ax41 self-hosted runner
+    runs-on: ubuntu-latest   # GitHub-hosted — NOT a self-hosted runner
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2

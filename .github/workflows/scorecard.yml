@@ -18,7 +18,7 @@ concurrency:
 jobs:
   analysis:
     name: Scorecard analysis
-    runs-on: [ubuntu-latest]   # GitHub-hosted — NOT the ax41 self-hosted runner
+    runs-on: [ubuntu-latest]   # GitHub-hosted — NOT a self-hosted runner
     permissions:
       security-events: write   # SARIF upload to code-scanning
       id-token: write          # OIDC for publish_results
