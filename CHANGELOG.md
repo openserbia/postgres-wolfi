@@ -47,9 +47,9 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   them, or enabling GHCR's *delete untagged versions* retention, breaks the
   multi-arch images — surfaced as a GitHub `[!CAUTION]` alert.
 - CI: doc/meta-only pushes (`**/*.md`, `docs/**`, `LICENSE`, `.gitignore`,
-  `.idea/**`) no longer trigger the image-build matrix (`paths-ignore` on the
-  `push` trigger). The weekly `schedule` rebuild and `workflow_dispatch` carry no
-  path filter and always build.
+  `.idea/**`) no longer trigger the image-build matrix or `lint` (`paths-ignore`
+  on each `push` trigger). The weekly `schedule` rebuild and `workflow_dispatch`
+  always build; `lint` keeps running unfiltered on every `pull_request`.
 - CI: `packages: write` / `id-token: write` moved off the top-level `permissions`
   block (which every job inherited) onto only the `build`/`manifest` jobs that push
   to GHCR and cosign-sign — least privilege; the `setup` job is now read-only.
