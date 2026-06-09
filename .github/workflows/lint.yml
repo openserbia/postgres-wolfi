@@ -6,6 +6,17 @@ name: lint
 on:
   push:
     branches: [main]
+    # paths-ignore on push ONLY. pull_request stays unfiltered so every PR is
+    # always linted — keeps `lint` safe to use as a required status check (a
+    # path-filtered required check leaves doc-only PRs with no status and blocks
+    # the merge). Nothing below can affect shellcheck (test/*.sh) or hadolint
+    # (Dockerfile), so doc/meta-only pushes to main skip linting.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.idea/**'
   pull_request:
 
 permissions:

@@ -46,7 +46,33 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   `:NN-YYYYMMDD-<arch>` tags are load-bearing manifest-list children — deleting
   them, or enabling GHCR's *delete untagged versions* retention, breaks the
   multi-arch images — surfaced as a GitHub `[!CAUTION]` alert.
+- CI: doc/meta-only pushes (`**/*.md`, `docs/**`, `LICENSE`, `.gitignore`,
+  `.idea/**`) no longer trigger the image-build matrix or `lint` (`paths-ignore`
+  on each `push` trigger). The weekly `schedule` rebuild and `workflow_dispatch`
+  always build; `lint` keeps running unfiltered on every `pull_request`.
+- CI: `packages: write` / `id-token: write` moved off the top-level `permissions`
+  block (which every job inherited) onto only the `build`/`manifest` jobs that push
+  to GHCR and cosign-sign — least privilege; the `setup` job is now read-only.
+  Restores OpenSSF Scorecard **Token-Permissions** to 10/10.
+- Added a deny-all `.dockerignore` (`*` then `!docker-entrypoint.sh`): the build
+  context is now just the single COPYed file (~3.2 MB → 447 B) and a stray
+  `COPY`/`ADD` can no longer bake `.git`, secrets, or SBOMs into a layer.
+- `.gitignore`: ignore `.idea/`, `.devbox/`, `.code-review-graph/`, and untracked
+  the IDE state files (`.idea/vcs.xml`, `.idea/workspace.xml`) that had been
+  committed.
+- CI: the `main` branch ruleset now requires a pull request and a passing `lint`
+  status check (pinned to the GitHub Actions app) before merge, on top of the
+  existing signed-commit / linear-history / no-force-push rules. Organization-admin
+  bypass is retained, so maintainer direct commits are unaffected; the PR + `lint`
+  gate binds external contributors. Lifts OpenSSF Scorecard **Branch-Protection**.
 
 ### Fixed
+
+- Smoke test: gate readiness on the entrypoint's `PostgreSQL init process
+  complete; ready for start up.` marker before trusting `pg_isready`, fixing a
+  flaky `the database system is shutting down` failure caused by latching onto the
+  temporary init server during first-boot. The test now also asserts the running
+  server's **major** matches the requested `PG_MAJOR` (version-drift gate); minor
+  drift (e.g. 16.8 → 16.14) is printed for visibility but does not fail.
 
 ### Security
