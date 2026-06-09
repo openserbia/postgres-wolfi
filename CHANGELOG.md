@@ -60,6 +60,11 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 - `.gitignore`: ignore `.idea/`, `.devbox/`, `.code-review-graph/`, and untracked
   the IDE state files (`.idea/vcs.xml`, `.idea/workspace.xml`) that had been
   committed.
+- CI: the `main` branch ruleset now requires a pull request and a passing `lint`
+  status check (pinned to the GitHub Actions app) before merge, on top of the
+  existing signed-commit / linear-history / no-force-push rules. Organization-admin
+  bypass is retained, so maintainer direct commits are unaffected; the PR + `lint`
+  gate binds external contributors. Lifts OpenSSF Scorecard **Branch-Protection**.
 
 ### Fixed
 
