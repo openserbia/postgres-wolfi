@@ -98,9 +98,25 @@ jobs:
       # :NN-<arch> is a stable scratch tag, overwritten every run — the manifest
       # job consumes the resulting DIGEST, never this tag, so a re-run cannot be
       # confused by what a previous run left here.
+      #
+      # --pull is load-bearing, not hygiene. The Dockerfile's base is the floating
+      # tag cgr.dev/chainguard/wolfi-base:latest, and each self-hosted runner keeps
+      # its own layer cache, so without it every leg builds on whatever snapshot
+      # that particular machine happened to cache — independently, and for as long
+      # as it stays cached. Two consequences, both silent:
+      #   1. The whole point of the weekly rebuild is pulling fresh Wolfi security
+      #      patches. A leg on a stale base skips a patch cycle and still publishes
+      #      green — the Trivy gate only fails on CRITICAL, so HIGH and below sail
+      #      through unnoticed.
+      #   2. The amd64 and arm64 children of one manifest list can come from
+      #      different base snapshots. We already guarantee both arches come from
+      #      the same commit; this makes them come from the same base too.
+      # Observed in the 2026-08-02 build: amd64 rebuilt to a new digest while arm64
+      # came back byte-identical to a build from six days earlier.
       - name: Build
         run: |
           docker build \
+            --pull \
             --build-arg PG_MAJOR="$PG_MAJOR" \
             -t "$IMAGE:$PG_MAJOR-$ARCH" \
             .

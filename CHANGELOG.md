@@ -90,6 +90,15 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   children stitched in that run came from a fully-gated run 39 seconds earlier,
   and the weekly scheduled rebuild six minutes later republished all tags from a
   clean full-matrix run.
+- CI: the build step now passes `docker build --pull`, so every leg resolves
+  `cgr.dev/chainguard/wolfi-base:latest` fresh instead of building on whatever
+  snapshot that self-hosted runner had cached. Without it a leg could sit on a
+  stale base indefinitely and still publish green — the weekly rebuild exists to
+  pull fresh Wolfi security patches, and the Trivy gate only fails on CRITICAL, so
+  a missed patch cycle was invisible. It also means the `amd64` and `arm64`
+  children of one manifest list are built from the same base snapshot, not just
+  the same commit. Observed in the 2026-08-02 build, where `amd64` rebuilt to a
+  new digest while `arm64` came back byte-identical to a build six days earlier.
 
 ### Removed
 
