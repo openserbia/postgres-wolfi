@@ -8,18 +8,16 @@ vars:
   # Default major; override per invocation, e.g. `task ci PG_MAJOR=17`.
   # CI drives one major per matrix leg this way.
   PG_MAJOR: '18'
-  DATE:
-    sh: date -u +%Y%m%d
   # Image ref that scan/sbom/smoke operate on. Defaults to the locally-built
   # :PG_MAJOR-latest; CI overrides it per arch leg, e.g.
-  # `task scan sbom smoke REF=$IMAGE:18-20260607-arm64`.
+  # `task scan sbom smoke REF=$IMAGE:18-arm64`.
   REF: '{{.IMAGE}}:{{.PG_MAJOR}}-latest'
 
 tasks:
   build:
-    desc: Build the image (:PG_MAJOR-latest and :PG_MAJOR-DATE)
+    desc: Build the image (:PG_MAJOR-latest)
     cmds:
-      - docker build --build-arg PG_MAJOR={{.PG_MAJOR}} -t {{.IMAGE}}:{{.PG_MAJOR}}-latest -t {{.IMAGE}}:{{.PG_MAJOR}}-{{.DATE}} .
+      - docker build --build-arg PG_MAJOR={{.PG_MAJOR}} -t {{.IMAGE}}:{{.PG_MAJOR}}-latest .
 
   scan:
     desc: Trivy — fail on CRITICAL, report HIGH

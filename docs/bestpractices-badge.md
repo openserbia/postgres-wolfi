@@ -67,9 +67,9 @@ marked as such with a reason.
 
 | Criterion | Status | Justification & evidence |
 |-----------|--------|--------------------------|
-| `version_unique` | Met | Each release is uniquely identified by an immutable `:18-YYYYMMDD` date tag **and** by image digest (`sha256:…`), which is authoritative. `docs/releasing.md` "Version uniqueness" |
-| `version_semver` | N/A | Project deliberately does **not** use SemVer; it uses date-snapshot tags + digest. This is an allowed alternative (unique, documented versioning). `CHANGELOG.md` (explicit "does not use Semantic Versioning"); `docs/releasing.md` |
-| `version_tags` | Met | Releases carry git/registry-visible identifiers: `:18-YYYYMMDD` tags plus optional GitHub Releases tagged `18-YYYYMMDD`. `docs/releasing.md` "Cutting a marked release" |
+| `version_unique` | Met | Each release is uniquely identified by its image digest (`sha256:…`), which is content-addressed and therefore unique by construction — no two distinct builds can share one. It is also what cosign signs and what the SBOM is attested to, so the identifier carries its own proof. `docs/releasing.md` "Version uniqueness" |
+| `version_semver` | N/A | Project deliberately does **not** use SemVer; releases are identified by image digest, with `:NN-latest` as a per-major channel. This is an allowed alternative (unique, documented versioning). `CHANGELOG.md` (explicit "does not use Semantic Versioning"); `docs/releasing.md` |
+| `version_tags` | Met | Marked releases are cut as **git tags** (`18-YYYYMMDD`) carrying a GitHub Release that records the full pull-by-digest ref and links the CHANGELOG entry. Registry-side, `:NN-latest` is a channel and the digest is the release identifier. `docs/releasing.md` "Cutting a marked release" |
 | `release_notes` | Met | `CHANGELOG.md` (Keep a Changelog format) records notable snapshots; marked GitHub Releases summarize changes + digest + link the CHANGELOG entry. `docs/releasing.md` |
 | `release_notes_vulns` | Met | Security-relevant changes go under a `Security` subsection in `CHANGELOG.md` and (where applicable) a GitHub Security Advisory. `SECURITY.md`; `docs/releasing.md` "Security-relevant releases" |
 
@@ -255,8 +255,8 @@ coverage tooling is in place.
       links to that filter, so it should return results.
 - [ ] **Optionally enable GitHub Discussions** (currently off; `docs/ROADMAP.md`
       and `CONTRIBUTING.md` reference it as "when enabled").
-- [ ] **Cut a tagged GitHub Release** pointing at a dated snapshot
-      (`18-YYYYMMDD` + digest + linked CHANGELOG entry) to strengthen
+- [ ] **Cut a tagged GitHub Release** on a git tag (`18-YYYYMMDD`) recording the
+      pull-by-digest ref + linked CHANGELOG entry, to strengthen
       `release_notes` / `version_unique`. `docs/releasing.md`
 - [ ] **Recruit a second independent contributor + reviewer** to unlock the gold
       human criteria (`contributors_unassociated`, `two_person_review`,

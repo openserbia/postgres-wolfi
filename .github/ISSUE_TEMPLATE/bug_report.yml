@@ -13,9 +13,12 @@ body:
   - type: input
     id: image-tag
     attributes:
-      label: Image tag
-      description: The exact tag you ran (e.g. 18-YYYYMMDD or 18-latest).
-      placeholder: 18-YYYYMMDD
+      label: Image digest or tag
+      description: >-
+        The image you ran. The digest is preferred and is the only thing that
+        identifies an exact build — :NN-latest rolls. Get it with:
+        docker buildx imagetools inspect ghcr.io/openserbia/postgres-wolfi:18-latest --format '{{.Manifest.Digest}}'
+      placeholder: sha256:… (or 18-latest)
     validations:
       required: true
   - type: textarea

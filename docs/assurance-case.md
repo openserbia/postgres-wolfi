@@ -90,8 +90,8 @@ retrievable and verifiable after the fact — not just an ephemeral CI log.
   artifact, and the "Sign + attest per-arch" step runs
   `cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"`
   against each arch image's digest.
-- Retrieve the attested SBOM from a pulled image (any `:NN-latest`/`:NN-YYYYMMDD`
-  tag, ideally by `@sha256:…` digest):
+- Retrieve the attested SBOM from a pulled image (the `:NN-latest` tag, or
+  preferably the `@sha256:…` digest you deploy):
 
   ```bash
   cosign verify-attestation ghcr.io/openserbia/postgres-wolfi:18-latest \

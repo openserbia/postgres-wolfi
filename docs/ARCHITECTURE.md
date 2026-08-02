@@ -125,7 +125,7 @@ signature binds to exact bytes:
   smoke test
         │
         ▼
-  push → GHCR  (per-arch tag :NN-DATE-<arch>)
+  push → GHCR  (per-arch scratch tag :NN-<arch>)
         │
         ▼
   cosign sign   (keyless, by digest)
@@ -139,21 +139,31 @@ A CRITICAL finding fails the build, so a vulnerable image is never pushed. The
 mirroring everything up to the publish step.
 
 Once all arch legs of a major succeed, a separate **`manifest` job** stitches the
-per-arch images (`:NN-DATE-amd64`, `:NN-DATE-arm64`) into the public multi-arch
-lists — the rolling `:NN-latest` and the immutable `:NN-YYYYMMDD` — with
+per-arch images into the public multi-arch list — the rolling `:NN-latest` — with
 `docker buildx imagetools create`, then cosign-signs the **manifest-list (index)
 digest**. So `cosign verify :NN-latest` (which resolves to the index) passes,
-and each arch child is independently signed and SBOM-attested. The arch-suffixed
-date tags remain in the registry as the addressable per-arch handles.
+and each arch child is independently signed and SBOM-attested.
+
+The job composes the list from the **digests** its build legs recorded this run,
+never from the `:NN-<arch>` tags. Those tags are stable scratch pointers,
+overwritten on every run, so resolving them would let a re-run splice a stale
+arch into a fresh list. Each leg uploads its digest as a `digest-<pg>-<arch>`
+artifact only after it has passed scan+smoke, pushed, signed and attested — so
+the artifact's existence *is* the leg's pass certificate, and a major missing
+either arch publishes nothing.
 
 > [!CAUTION]
-> **These per-arch tags are load-bearing — do not delete them, and never enable
-> GHCR's "delete untagged versions" retention on this package.** A per-arch tag and
-> the matching child of the `:NN-latest` / `:NN-YYYYMMDD` manifest list share one
-> manifest digest (the index references children *by digest*), and GHCR can only
-> delete whole versions, not just a tag pointer. Deleting a per-arch tag — or
-> pruning untagged versions — therefore removes a manifest the index depends on and
-> breaks the multi-arch image. See the GC note in [`releasing.md`](releasing.md).
+> **Never enable GHCR's "delete untagged versions" retention on this package.**
+> A published image and the corresponding child of the `:NN-latest` manifest list
+> share one manifest digest (the index references children *by digest*), and GHCR
+> can only delete whole versions, not just a tag pointer.
+>
+> Because `:NN-latest` and `:NN-<arch>` are the only tags and all of them are
+> rolling, **every previous build becomes untagged as soon as the next one
+> publishes**. Those untagged manifests are exactly what digest pins resolve to.
+> Pruning untagged versions would therefore break every `@sha256:…` pin any
+> consumer has ever recorded, not just old ones. See the GC note in
+> [`releasing.md`](releasing.md).
 
 ## Supply-chain controls
 
@@ -175,18 +185,26 @@ date tags remain in the registry as the addressable per-arch handles.
 
 Published under `ghcr.io/openserbia/postgres-wolfi`:
 
-Each supported major (`NN` ∈ 16, 17, 18) publishes its own tag pair:
+Each supported major (`NN` ∈ 16, 17, 18) publishes exactly one public tag:
 
-| Tag             | Meaning                                                            |
+| Reference       | Meaning                                                            |
 |-----------------|-------------------------------------------------------------------|
 | `:NN-latest`    | rolling — newest build of the **NN.x** line (minor bumps only)    |
-| `:NN-YYYYMMDD`  | immutable — pin / rollback to an exact dated snapshot              |
+| `@sha256:…`     | immutable — pin / rollback to an exact build                       |
 
 There is intentionally **no `:latest`** and **no bare `:NN`**. A database must
 not be pulled by an unbounded floating tag: `:latest` could silently cross a
 major version, and a bare `:18` invites surprise jumps. `:NN-latest` is bounded
-to that `NN.x` line for "track the current series", and `:NN-YYYYMMDD` gives an
-immutable handle for pinning and rollback.
+to that `NN.x` line for "track the current series".
+
+There is deliberately **no dated `:NN-YYYYMMDD` tag**. Pinning is done by digest.
+A date tag would be a second, weaker name for something the digest already
+identifies exactly: signatures and SBOM attestations bind to the digest, so the
+digest is the only reference that carries its own proof. A date tag also fails at
+its one job the moment two builds land on the same day, silently resolving to the
+later one. `:NN-<arch>` tags exist but are internal scratch pointers for manifest
+assembly, not a consumer interface — pull those and you get one architecture and
+no index signature.
 
 ## Tooling map
 

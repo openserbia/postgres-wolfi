@@ -18,7 +18,8 @@ Report privately using **[GitHub Security Advisories](https://github.com/openser
 
 Please include:
 
-- the affected image tag (`:NN-latest` or `:NN-YYYYMMDD`, e.g. `:18-latest`) and digest if known;
+- the affected image **digest** (`@sha256:…`) — and the tag you pulled
+  (e.g. `:18-latest`) if that is all you have;
 - a description of the issue and its impact;
 - reproduction steps or a proof of concept where possible.
 
@@ -74,7 +75,7 @@ next weekly rebuild and, for CRITICALs, out of band.
 | Tag line                                  | Supported           |
 |-------------------------------------------|---------------------|
 | `:18-latest`, `:17-latest`, `:16-latest`  | ✅ rebuilt weekly   |
-| `:NN-YYYYMMDD` (NN ∈ 16, 17, 18)          | ✅ pinned snapshots; rebuild/repull for fixes |
+| `@sha256:…` digest pins (NN ∈ 16, 17, 18) | ✅ remain pullable; repull `:NN-latest` for fixes |
 | any major older than 16, or a newer major before Wolfi ships it | ❌ not built |
 
 ## Assurance case

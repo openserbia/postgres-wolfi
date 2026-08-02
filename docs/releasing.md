@@ -25,8 +25,8 @@ a successful run:
 
 1. builds the image natively (`--build-arg PG_MAJOR=NN`),
 2. scans → SBOMs → smoke-tests it, then
-3. pushes an **immutable per-arch tag** `:NN-YYYYMMDD-<arch>` and cosign-signs +
-   SBOM-attests it **by digest**.
+3. pushes a **per-arch scratch tag** `:NN-<arch>` and cosign-signs + SBOM-attests
+   the resulting image **by digest**.
 
 Pipeline order **per leg** is: build → Trivy scan (fails on CRITICAL; HIGH
 reported, non-gating) → CycloneDX SBOM (syft, `sbom.cdx.json`) → smoke test →
@@ -35,37 +35,48 @@ push → cosign keyless sign → cosign attest SBOM. Legs are independent
 and does not block the others — there is no broken release.
 
 A final **`manifest` job** (per major) then assembles the two arch images into the
-public **multi-arch lists** — the immutable `:NN-YYYYMMDD` and the rolling
-`:NN-latest` — with `docker buildx imagetools create`, and cosign-signs the
-**manifest-list (index) digest**. So a published `:NN-latest` is an
-amd64+arm64 manifest whose index is signed and whose per-arch children are each
-signed and SBOM-attested.
+public **multi-arch list** — the rolling `:NN-latest` — with
+`docker buildx imagetools create`, and cosign-signs the **manifest-list (index)
+digest**. So a published `:NN-latest` is an amd64+arm64 manifest whose index is
+signed and whose per-arch children are each signed and SBOM-attested.
+
+The job assembles the list from the **digests** recorded by this run's build legs
+(passed between jobs as `digest-<pg>-<arch>` artifacts, uploaded only after a leg
+has fully passed), never from the `:NN-<arch>` tags. It **fails closed** if either
+arch is missing, so a major whose arm64 leg failed publishes nothing rather than
+silently reusing whatever the previous run left in the registry.
+
+The published index digest is echoed to the job log and to the run summary as a
+`Published PG NN` notice — **that is the pin handle for the build.**
 
 > [!CAUTION]
-> **Do not delete the `:NN-YYYYMMDD-<arch>` tags, and do not enable GHCR's
-> "delete untagged versions" retention on this package.** Each per-arch tag and
-> the corresponding child of the `:NN-latest` / `:NN-YYYYMMDD` manifest list are
-> the **same manifest (one digest)** — the index references the child *by digest*.
-> GHCR (and the GitHub Packages API) can only delete a whole *version*, not "untag
-> while keeping the manifest", so removing a per-arch tag — or pruning untagged
-> versions — deletes the manifest the index points at and **breaks the multi-arch
-> image for that arch**. The per-arch date tags accumulate (~6/week) but are
-> immutable and harmless; leave them. They can only be reclaimed by deleting a
-> whole dated snapshot (index + both children) once that `:NN-YYYYMMDD` is retired.
+> **Never enable GHCR's "delete untagged versions" retention on this package.**
+> A per-arch image and the corresponding child of the `:NN-latest` manifest list
+> are the **same manifest (one digest)** — the index references the child *by
+> digest*. GHCR (and the GitHub Packages API) can only delete a whole *version*,
+> not "untag while keeping the manifest".
+>
+> Every tag this project publishes is rolling, so **each build leaves the previous
+> one untagged**: the old index and both its children stay in the registry, reachable
+> only by digest. That is by design — it is what makes `@sha256:…` pins work — but it
+> means pruning untagged versions would **break every digest pin any consumer has
+> ever recorded**, not merely reclaim old junk. There is no retention policy that
+> is safe to enable here.
 
 ## Version uniqueness
 
-There are no semantic version numbers. A release is identified two ways:
+There are no semantic version numbers and no date tags. A release is identified
+by exactly one thing: the **image digest** `sha256:…` (content-addressed).
 
-- the **date tag** `:NN-YYYYMMDD` (immutable, human-readable, the pin/rollback
-  handle — scoped to its major line, e.g. `:18-YYYYMMDD`); and
-- the **image digest** `sha256:…` (content-addressed, the canonical identity).
+The digest is not merely authoritative, it is the *only* identifier — which is
+the point. **Signing and SBOM attestation are done by digest**, so the signature
+and SBOM are bound to exact content; any tag would be a mutable alias that
+carries none of that proof. A date tag in particular fails at its own job as soon
+as two builds land on the same UTC day, silently resolving to the later one.
 
-The digest is authoritative. If two builds on the same day were ever both
-pushed, the date tag would resolve to the latest, but each distinct image keeps
-its own digest. **Signing and SBOM attestation are done by digest**, so the
-signature and SBOM are bound to exact content, not to a movable tag. Always
-record the digest of any image you deploy.
+`:NN-latest` is a *channel*, not a version: it names "the current NN.x build",
+and it moves. Always record the digest of any image you deploy, and deploy that
+digest.
 
 ## Cutting a marked release (GitHub Release)
 
@@ -73,20 +84,29 @@ CI already publishes every build; a GitHub Release is for calling out a snapshot
 worth pointing people at (a notable change, a security fix, a recommended pin).
 It does **not** build or push anything.
 
-1. Pick the per-major date snapshot to mark, e.g. `18-YYYYMMDD` (or `17-…`/`16-…`),
-   and get its digest:
+1. Capture the **digest** of the build you are marking, for the major you are
+   marking it on. Take it from the `Published PG NN` notice on the build run, or
+   resolve the current one:
 
    ```bash
-   docker buildx imagetools inspect ghcr.io/openserbia/postgres-wolfi:18-YYYYMMDD
+   docker buildx imagetools inspect ghcr.io/openserbia/postgres-wolfi:18-latest \
+     --format '{{.Manifest.Digest}}'
    ```
 
+   Do this **before** the next build publishes, or `:18-latest` will already have
+   moved — the digest is the only handle, so capture it deliberately.
+
 2. Update `CHANGELOG.md`: move the relevant `[Unreleased]` notes into a dated
-   entry whose heading matches the snapshot (`## [YYYY-MM-DD]`), keeping the
-   `Added` / `Changed` / `Fixed` / `Security` subsections.
-3. Draft a **GitHub Release** tagged with that snapshot, e.g. `18-YYYYMMDD`
-   (the major prefix keeps releases on different lines distinct). In the body:
+   entry (`## [YYYY-MM-DD]`), keeping the `Added` / `Changed` / `Fixed` /
+   `Security` subsections, and **record the digest in the entry**.
+3. Draft a **GitHub Release** on a *git* tag named for the snapshot, e.g.
+   `18-YYYYMMDD` (the major prefix keeps releases on different lines distinct).
+   This is a git tag only — the project publishes no image tag of that name. In
+   the body:
    - summarize the notable changes and any security fixes,
-   - include the image **digest**,
+   - give the full pull-by-digest ref
+     (`ghcr.io/openserbia/postgres-wolfi@sha256:…`) — this is the artifact the
+     release *is*, since no image tag will keep pointing at it,
    - **link the matching `CHANGELOG.md` entry**.
 4. Keep the title and notes terse and factual — no marketing.
 
