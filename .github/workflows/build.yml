@@ -84,6 +84,10 @@ jobs:
           - arch: arm64
             runner: ARM64
     runs-on: [self-hosted, "${{ matrix.runner }}"]
+    # A wedged leg on a self-hosted runner holds that runner hostage; without this
+    # it would sit there for GitHub's 6-hour default. Generous enough for a cold
+    # --pull build of the slowest arch, tight enough to free the runner promptly.
+    timeout-minutes: 30
     env:
       PG_MAJOR: ${{ matrix.pg }}
       ARCH: ${{ matrix.arch }}
@@ -92,6 +96,28 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+
+      # Deliberately FIRST, well before the push it is nominally for. `docker
+      # login` writes ~/.docker/config.json, and Trivy reads that same file
+      # (go-containerregistry's default keychain) — so logging in here is also what
+      # authenticates Trivy's vulnerability-DB fetch.
+      #
+      # Trivy 0.69's --db-repository default is
+      #   mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
+      # i.e. the Google mirror first, GHCR as the fallback. The fallback is the leg
+      # that used to be an anonymous pull, subject to GHCR's anonymous rate limit,
+      # from runners that fire three legs at once off one public IP. Authenticating
+      # it costs nothing and removes that ceiling.
+      #
+      # Credentials go in via the docker config rather than TRIVY_USERNAME /
+      # TRIVY_PASSWORD on purpose: those apply to EVERY registry Trivy contacts,
+      # which would send this job's GITHUB_TOKEN to mirror.gcr.io as well. The
+      # docker config is scoped per-registry, so the token only ever reaches ghcr.io.
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
       # Native single-arch build: the runner's hardware arch == matrix.arch, so a
       # plain `docker build` already produces the correct arch (no buildx/QEMU).
@@ -130,9 +156,6 @@ jobs:
           name: sbom-${{ matrix.pg }}-${{ matrix.arch }}
           path: sbom.cdx.json
           retention-days: 1
-
-      - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       # Read the digest back from the REGISTRY (not from local `docker inspect
       # .RepoDigests`, which is a local-daemon cache that can hold entries from
@@ -182,6 +205,8 @@ jobs:
     # legs uploaded a digest artifact this run — see "Assert both arches passed".
     if: ${{ !cancelled() }}
     runs-on: [self-hosted, X64]
+    # Pure registry work — no build, no scan. Typical run is ~20s.
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -190,7 +215,10 @@ jobs:
       PG_MAJOR: ${{ matrix.pg }}
     steps:
       - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
       # Pull in the digest artifacts uploaded by THIS run's build legs. Each file
       # is named after its arch and holds that leg's registry digest. A leg that

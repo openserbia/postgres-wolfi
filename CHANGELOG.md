@@ -99,6 +99,22 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   children of one manifest list are built from the same base snapshot, not just
   the same commit. Observed in the 2026-08-02 build, where `amd64` rebuilt to a
   new digest while `arm64` came back byte-identical to a build six days earlier.
+- CI: the GHCR login now runs **before** the scan step instead of just before the
+  push. `docker login` writes `~/.docker/config.json`, which is the same keychain
+  Trivy reads, so this also authenticates Trivy's vulnerability-DB fetch. Trivy
+  0.69's `--db-repository` default is
+  `mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2` — the GHCR
+  entry is the *fallback*, and it was previously an anonymous pull subject to
+  GHCR's anonymous rate limit, from runners that fire three legs at once off a
+  single public IP. Credentials are passed via the docker config rather than
+  `TRIVY_USERNAME` / `TRIVY_PASSWORD`, which apply to every registry Trivy
+  contacts and would have sent the job's `GITHUB_TOKEN` to `mirror.gcr.io` too.
+- CI: both jobs now set `timeout-minutes` (30 for a build leg, 10 for a manifest
+  leg). A wedged job on a self-hosted runner previously held that runner for
+  GitHub's 6-hour default.
+- CI: both `docker login` steps pass `secrets.GITHUB_TOKEN` and `github.actor`
+  through `env:` rather than interpolating them directly into `run:`, per GitHub's
+  workflow-injection guidance.
 
 ### Removed
 
