@@ -51,7 +51,10 @@ env:
 #   - `manifest` stitches each major's two arch images into the public multi-arch
 #                lists (:NN-latest rolling, :NN-YYYYMMDD immutable) and signs the
 #                list (index) digest. Per-arch children are already signed +
-#                SBOM-attested by the build job.
+#                SBOM-attested by the build job. It composes the list BY DIGEST,
+#                from digest artifacts that only exist when a leg fully passed,
+#                and refuses to publish a major missing either arch — so a
+#                manifest list can never mix arches across runs or commits.
 jobs:
   setup:
     # One shared date for the whole run, so the arch legs and the manifest job
@@ -120,15 +123,41 @@ jobs:
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
+      # Read the digest back from the REGISTRY (not from local `docker inspect
+      # .RepoDigests`, which is a local-daemon cache that can hold entries from
+      # earlier pushes). This is the authoritative identity of what we just
+      # published, and it is what both cosign and the manifest job consume.
       - name: Push (per-arch tag)
-        run: docker push "$IMAGE:$PG_MAJOR-$DATE-$ARCH"
+        id: push
+        run: |
+          docker push "$IMAGE:$PG_MAJOR-$DATE-$ARCH"
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-$DATE-$ARCH" --format '{{.Manifest.Digest}}')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          mkdir -p digests
+          printf '%s' "$DIGEST" > "digests/$ARCH"
 
       - name: Sign + attest per-arch (by digest, via devbox cosign)
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
         run: |
-          DIGEST=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE:$PG_MAJOR-$DATE-$ARCH")
-          echo "signing $DIGEST"
-          devbox run -- cosign sign --yes "$DIGEST"
-          devbox run -- cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"
+          echo "signing $IMAGE@$DIGEST"
+          devbox run -- cosign sign --yes "$IMAGE@$DIGEST"
+          devbox run -- cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$IMAGE@$DIGEST"
+
+      # LAST step of the leg, deliberately. Steps only run when every preceding
+      # step succeeded, so the mere EXISTENCE of this artifact certifies that this
+      # (major, arch) passed the CRITICAL scan + smoke gate, pushed, and was signed
+      # and SBOM-attested. The manifest job treats it as exactly that success
+      # token: no artifact -> no manifest list for that major. Uploading it right
+      # after `docker push` would instead let a leg that failed `cosign sign` feed
+      # an unsigned child into the published list.
+      - name: Upload digest (manifest input / leg success token)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: digest-${{ matrix.pg }}-${{ matrix.arch }}
+          path: digests/${{ matrix.arch }}
+          retention-days: 1
+          if-no-files-found: error
 
   manifest:
     needs: [setup, build]
@@ -136,9 +165,10 @@ jobs:
       contents: read
       packages: write      # push manifest list to GHCR
       id-token: write      # cosign sign index
-    # Run even if some build legs failed (fail-fast: false leaves the rest green);
-    # this matrix's own legs fail only for a major whose arch images are missing,
-    # so a broken major never yields a published manifest list.
+    # Run even if some build legs failed (fail-fast: false leaves the rest green),
+    # so a healthy major still publishes when a sibling major is broken. This
+    # matrix's own leg for a major fails closed unless BOTH of that major's arch
+    # legs uploaded a digest artifact this run — see "Assert both arches passed".
     if: ${{ !cancelled() && needs.setup.result == 'success' }}
     runs-on: [self-hosted, X64]
     strategy:
@@ -152,16 +182,49 @@ jobs:
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      # Assemble the per-arch images into the public multi-arch manifest lists.
-      # imagetools resolves each source tag to its digest and builds an OCI index;
-      # both the rolling and the dated tag point at the same index.
+      # Pull in the digest artifacts uploaded by THIS run's build legs. Each file
+      # is named after its arch and holds that leg's registry digest. A leg that
+      # failed anywhere (scan gate, push, sign, attest) uploaded nothing, so its
+      # file is simply absent — which the next step turns into a hard failure.
+      - name: Download per-arch digests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          pattern: digest-${{ matrix.pg }}-*
+          merge-multiple: true
+          path: digests
+
+      # Fail closed. Previously this job composed the list from the per-arch TAGS
+      # (:NN-DATE-amd64 / -arm64), which made the gate a no-op on any same-day
+      # re-run: DATE has day granularity, so an earlier run's tags were still
+      # sitting in the registry and imagetools happily resolved them. A run whose
+      # arm64 legs failed the CRITICAL gate could therefore still publish
+      # :NN-latest as {fresh amd64 from this commit} + {stale arm64 from an
+      # earlier commit} — a manifest list whose two architectures came from
+      # different sources, reported green. Observed in run 30256361638 (2026-07-27),
+      # where 17-arm64 and 18-arm64 failed yet manifest (17)/(18) both succeeded.
+      - name: Assert both arches passed this run
+        run: |
+          for arch in amd64 arm64; do
+            if [ ! -s "digests/$arch" ]; then
+              echo "::error::PG $PG_MAJOR: no digest recorded for linux/$arch in this run — that build leg did not fully pass. Refusing to publish a manifest list."
+              exit 1
+            fi
+          done
+
+      # Assemble the per-arch images into the public multi-arch manifest lists,
+      # addressing the children BY DIGEST so the list can only ever contain images
+      # this run built, scanned, pushed and signed. Both the rolling and the dated
+      # tag point at the same index.
       - name: Create + push manifest lists
         run: |
+          AMD64_DIGEST=$(cat digests/amd64)
+          ARM64_DIGEST=$(cat digests/arm64)
+          echo "PG $PG_MAJOR: amd64=$AMD64_DIGEST arm64=$ARM64_DIGEST"
           docker buildx imagetools create \
             -t "$IMAGE:$PG_MAJOR-latest" \
             -t "$IMAGE:$PG_MAJOR-$DATE" \
-            "$IMAGE:$PG_MAJOR-$DATE-amd64" \
-            "$IMAGE:$PG_MAJOR-$DATE-arm64"
+            "$IMAGE@$AMD64_DIGEST" \
+            "$IMAGE@$ARM64_DIGEST"
 
       # Sign the manifest-list (index) digest, so `cosign verify :NN-latest`
       # (which resolves to the index) passes. Per-arch children were already

@@ -74,5 +74,21 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   temporary init server during first-boot. The test now also asserts the running
   server's **major** matches the requested `PG_MAJOR` (version-drift gate); minor
   drift (e.g. 16.8 → 16.14) is printed for visibility but does not fail.
+- CI: the `manifest` job now composes each multi-arch list **by digest**, from
+  digest artifacts that a build leg uploads only after it has passed the CRITICAL
+  scan + smoke gate, pushed, signed and SBOM-attested — and fails closed for any
+  major missing either arch. It previously composed the list from the per-arch
+  **tags** (`:NN-YYYYMMDD-amd64` / `-arm64`), which made the "a broken major never
+  yields a published manifest list" guarantee a no-op on same-day re-runs: `DATE`
+  has day granularity, so an earlier run's per-arch tags were still in the
+  registry and `imagetools` resolved them regardless. A run whose `arm64` legs
+  failed the gate could therefore publish `:NN-latest` as a fresh `amd64` plus a
+  **stale `arm64` from an earlier commit**, and still report green. Observed in
+  run [`30256361638`](https://github.com/openserbia/postgres-wolfi/actions/runs/30256361638)
+  (2026-07-27), where the `17-arm64` and `18-arm64` legs failed yet `manifest (17)`
+  and `manifest (18)` both succeeded. No affected image reached users: the arm64
+  children stitched in that run came from a fully-gated run 39 seconds earlier,
+  and the weekly scheduled rebuild six minutes later republished all tags from a
+  clean full-matrix run.
 
 ### Security
