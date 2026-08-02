@@ -19,16 +19,27 @@ CRITICAL, cosign-signed, with a CycloneDX SBOM.
 
 `ghcr.io/openserbia/postgres-wolfi`
 
-Each supported major is published as its own pair of tags (`NN` ∈ `16`, `17`, `18`):
+Each supported major publishes exactly one tag (`NN` ∈ `16`, `17`, `18`):
 
-| Tag             | Meaning                                                                                                          |
-|-----------------|------------------------------------------------------------------------------------------------------------------|
-| `:NN-latest`    | Rolling — newest build of the **NN.x** line (only ever moves across *minor* bugfix releases, never a major jump) |
-| `:NN-YYYYMMDD`  | Immutable — pin / rollback                                                                                        |
+| Reference        | Meaning                                                                                                          |
+|------------------|------------------------------------------------------------------------------------------------------------------|
+| `:NN-latest`     | Rolling — newest build of the **NN.x** line (only ever moves across *minor* bugfix releases, never a major jump) |
+| `@sha256:…`      | Immutable — pin / rollback to an exact build                                                                      |
 
-So `:18-latest`, `:17-latest`, and `:16-latest` track each line independently,
-each with its own dated snapshots. There is intentionally **no `:latest`** and
-**no bare `:NN`** — a database must never be pulled by an unbounded floating tag.
+So `:18-latest`, `:17-latest`, and `:16-latest` track each line independently.
+There is intentionally **no `:latest`** and **no bare `:NN`** — a database must
+never be pulled by an unbounded floating tag.
+
+There are no dated tags: **pin by digest.** The digest is the canonical identity
+of a build — it is what cosign signs and what the SBOM is attested to — so a tag
+would only ever be a second, weaker name for it. Resolve the current digest with:
+
+```bash
+docker buildx imagetools inspect ghcr.io/openserbia/postgres-wolfi:18-latest \
+  --format '{{.Manifest.Digest}}'
+```
+
+then deploy `ghcr.io/openserbia/postgres-wolfi@sha256:…` and record that digest.
 
 Every tag is a **multi-arch manifest list** (`linux/amd64` + `linux/arm64`),
 each architecture built and smoke-tested natively; `docker pull` resolves to your
@@ -50,8 +61,8 @@ docker pull ghcr.io/openserbia/postgres-wolfi:18-latest
 
 ## Verify the signature
 
-Every pushed image is signed, so this works for any `:NN-latest` or
-`:NN-YYYYMMDD` tag (and, preferably, the `@sha256:…` digest you deploy):
+Every pushed image is signed, so this works for any `:NN-latest` tag — and,
+preferably, for the `@sha256:…` digest you actually deploy:
 
 ```bash
 cosign verify ghcr.io/openserbia/postgres-wolfi:18-latest \

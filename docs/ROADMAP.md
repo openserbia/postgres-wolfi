@@ -58,7 +58,7 @@ who decides or how decisions are made, it ties back to `GOVERNANCE.md`.
   goes through whatever review process `GOVERNANCE.md` defines before the
   threshold moves.
 - **Multi-arch builds — delivered.** `linux/arm64` now ships alongside `amd64`:
-  each major's `:NN-latest`/`:NN-YYYYMMDD` is a manifest list, each arch built and
+  each major's `:NN-latest` is a manifest list, each arch built and
   smoke-tested natively on a self-hosted runner of that architecture (routed by
   GitHub's built-in `X64` / `ARM64` labels), signed and SBOM'd per-arch under the
   same tag contract (`docs/ARCHITECTURE.md`). Remaining follow-on here is

@@ -15,8 +15,9 @@ CI changes.
 - **Questions / discussion / feedback:** open a
   [GitHub Issue](https://github.com/openserbia/postgres-wolfi/issues).
 - **Bug reports:** open an Issue using the **Bug report** template. Include the
-  image tag (`:NN-YYYYMMDD`, e.g. `:18-YYYYMMDD`), the `docker run` invocation, and `docker logs`
-  output. The issue tracker is the searchable public archive of all reports.
+  image **digest** (`@sha256:…`, or the `:NN-latest` tag you pulled), the
+  `docker run` invocation, and `docker logs` output. The issue tracker is the
+  searchable public archive of all reports.
 - **Security vulnerabilities:** do **not** open a public Issue. Follow
   [`SECURITY.md`](SECURITY.md) for private reporting.
 
