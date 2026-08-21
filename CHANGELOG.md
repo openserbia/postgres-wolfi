@@ -68,6 +68,20 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ### Fixed
 
+- Smoke test: identify the container and volume by the IDs Docker returns rather
+  than by a `pgwolfi-smoke-$$` name built from the shell PID. Several self-hosted
+  runners share one Docker daemon while each sits in its own PID namespace, so
+  `$$` is not unique across concurrent matrix legs — two arm64 legs computed the
+  same name, the loser's `docker run` failed with a name conflict, and its `EXIT`
+  trap then `docker rm -f`'d the *winner's* container, so the surviving leg hung
+  until `FAIL: never became ready`. One collision therefore failed two legs and,
+  through the digest gate, two `manifest` jobs. Observed in run
+  [`32004941931`](https://github.com/openserbia/postgres-wolfi/actions/runs/32004941931)
+  (2026-08-17), where `build (16, arm64)` and `build (17, arm64)` both failed and
+  took `manifest (16)` and `manifest (17)` with them. Docker-assigned IDs cannot
+  collide, and cleanup now only removes resources that run actually created, so a
+  future collision can no longer take a passing leg down with it. No bad image was
+  published: the digest gate held and refused both manifest lists.
 - Smoke test: gate readiness on the entrypoint's `PostgreSQL init process
   complete; ready for start up.` marker before trusting `pg_isready`, fixing a
   flaky `the database system is shutting down` failure caused by latching onto the
