@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 OpenSerbia
+# SPDX-License-Identifier: MIT
+
+name: pg-major-probe
+
+# Standing up a new `:NN-*` line is gated entirely on Wolfi publishing a
+# `postgresql-NN` apk — until it exists, `apk add postgresql-NN` 404s and the
+# matrix leg is perma-red (see docs/ROADMAP.md, "PostgreSQL 19 line"). Rather
+# than remember to check, probe Wolfi weekly and open ONE tracking issue when a
+# major newer than anything we build becomes installable.
+#
+# The probe itself lives in .github/scripts/pg-major-probe.sh so it is
+# shellcheck-linted like every other script here and can be dry-run locally:
+#   PROBE_DRY_RUN=1 ./.github/scripts/pg-major-probe.sh
+on:
+  schedule:
+    - cron: "23 7 * * 2"   # weekly, Tuesday 07:23 UTC — a day after the build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest   # GitHub-hosted — docker and gh are preinstalled,
+                             # and it keeps the self-hosted build runners free.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write          # the whole point: file the "new major" issue
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Probe Wolfi for a newer PostgreSQL major
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./.github/scripts/pg-major-probe.sh
