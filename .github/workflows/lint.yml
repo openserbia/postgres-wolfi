@@ -10,7 +10,8 @@ on:
     # always linted — keeps `lint` safe to use as a required status check (a
     # path-filtered required check leaves doc-only PRs with no status and blocks
     # the merge). Nothing below can affect shellcheck (test/*.sh) or hadolint
-    # (Dockerfile), so doc/meta-only pushes to main skip linting.
+    # (Dockerfile) or the CI helper scripts (.github/scripts/*.sh), so
+    # doc/meta-only pushes to main skip linting.
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
@@ -42,7 +43,7 @@ jobs:
         # shellcheck is preinstalled on ubuntu-latest runners.
         # docker-entrypoint.sh is intentionally NOT linted: it is vendored
         # verbatim from docker-library/postgres and must never be hand-edited.
-        run: shellcheck test/*.sh
+        run: shellcheck test/*.sh .github/scripts/*.sh
 
       - name: hadolint
         # Pinned hadolint release binary, run directly against the Dockerfile.

@@ -25,6 +25,15 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ### Added
 
+- `pg-major-probe` workflow: a weekly job that asks Wolfi whether it publishes a
+  PostgreSQL major newer than the highest one in the build matrix, and opens a
+  single tracking issue when one becomes installable. Standing up a new `:NN-*`
+  line is gated entirely on Wolfi shipping the package — until then the leg would
+  404 on `apk add` — so this replaces remembering to check by hand ahead of the
+  PostgreSQL 19 line (see [`docs/ROADMAP.md`](docs/ROADMAP.md)). It requires a
+  complete `postgresql-NN` + `-client` + `-contrib` set before alerting, since a
+  partial set would still fail the build, and fails loudly if the probe returns
+  nothing at all rather than reporting "no new major".
 - Multi-version build matrix: the `:16-*`, `:17-*`, and `:18-*` tag lines are now
   built, Trivy-scanned, smoke-tested, signed, and SBOM-attested in parallel on the
   weekly cadence — previously only `:18-*` was produced.
