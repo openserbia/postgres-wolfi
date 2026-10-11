@@ -151,7 +151,7 @@ jobs:
         run: devbox run -- task scan sbom smoke PG_MAJOR="$PG_MAJOR" REF="$IMAGE:$PG_MAJOR-$ARCH"
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: sbom-${{ matrix.pg }}-${{ matrix.arch }}
           path: sbom.cdx.json
@@ -186,7 +186,7 @@ jobs:
       # after `docker push` would instead let a leg that failed `cosign sign` feed
       # an unsigned child into the published list.
       - name: Upload digest (manifest input / leg success token)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: digest-${{ matrix.pg }}-${{ matrix.arch }}
           path: digests/${{ matrix.arch }}
