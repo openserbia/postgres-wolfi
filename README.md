@@ -3,7 +3,9 @@
 [![build](https://github.com/openserbia/postgres-wolfi/actions/workflows/build.yml/badge.svg)](https://github.com/openserbia/postgres-wolfi/actions/workflows/build.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/openserbia/postgres-wolfi/badge)](https://scorecard.dev/viewer/?uri=github.com/openserbia/postgres-wolfi)
 [![cosign signed](https://img.shields.io/badge/cosign-signed-blueviolet?logo=sigstore&logoColor=white)](#verify-the-signature)
-[![image size](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=18-latest&label=image%20size&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
+[![16 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=16-latest&label=16%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
+[![17 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=17-latest&label=17%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
+[![18 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=18-latest&label=18%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 <!-- TODO: register at bestpractices.dev, then replace PROJECT_ID and uncomment -->
 <!-- [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID) -->
@@ -44,6 +46,12 @@ then deploy `ghcr.io/openserbia/postgres-wolfi@sha256:…` and record that diges
 Every tag is a **multi-arch manifest list** (`linux/amd64` + `linux/arm64`),
 each architecture built and smoke-tested natively; `docker pull` resolves to your
 platform automatically.
+
+The size badges are the compressed `linux/amd64` image on that tag. The number
+is the sum of the layer blobs in the published manifest, which is what
+`docker pull` transfers on amd64. `linux/arm64` is slightly smaller.
+`docker images` prints the uncompressed size, which is larger. The badge
+follows the tag and changes when the weekly rebuild does.
 
 ```bash
 docker pull ghcr.io/openserbia/postgres-wolfi:18-latest
