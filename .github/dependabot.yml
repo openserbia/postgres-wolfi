@@ -7,6 +7,8 @@ updates:
   # Keeps the SHA-pins current; PRs land with the "ci" commit prefix.
   - package-ecosystem: "github-actions"
     directory: "/"
+    cooldown:
+      default-days: 7
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
@@ -19,6 +21,8 @@ updates:
   # PRs land with the "build" commit prefix.
   - package-ecosystem: "docker"
     directory: "/"
+    cooldown:
+      default-days: 7
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
