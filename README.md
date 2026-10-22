@@ -58,6 +58,10 @@ docker pull ghcr.io/openserbia/postgres-wolfi:18-latest
   `POSTGRES_DB`, `PGDATA`, `/docker-entrypoint-initdb.d`) — the entrypoint is vendored
   from docker-library/postgres.
 - `PGDATA=/var/lib/postgresql/data`, default `LANG=C.UTF-8`.
+- **No JIT.** LLVM is left out (it was over half the image), so
+  `pg_jit_available()` is `false` and queries run interpreted, as with `jit = off`.
+  Most OLTP deployments turn JIT off anyway; if you rely on it, see
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#image-composition).
 
 ## Verify the signature
 

@@ -74,9 +74,38 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   existing signed-commit / linear-history / no-force-push rules. Organization-admin
   bypass is retained, so maintainer direct commits are unaffected; the PR + `lint`
   gate binds external contributors. Lifts OpenSSF Scorecard **Branch-Protection**.
+- Image ~60% smaller (on disk 317 MB → ~128 MB per major; compressed pull
+  120 MB → 50 MB for `:18`). `libLLVM`, which `postgresql-NN-base` pulls in only
+  for the optional JIT provider, is purged in the install layer along with the
+  dependencies only it needed (`libffi`, the older `libxml2`). Their apk-database
+  records go too, so the SBOM and Trivy match what is on disk. **JIT is no longer
+  available** (`pg_jit_available()` = `false`; queries run as with `jit = off`).
+  The new build helper `scripts/apk-purge.sh` fails the build if any remaining
+  binary has an unresolved library. `xz` is now installed explicitly to keep
+  `xzcat` for `*.sql.xz` init scripts. The entrypoint is `COPY --chmod`ed rather
+  than `chmod`ed in an extra layer.
+- Smoke test now also asserts JIT is unavailable but harmless (a query forced
+  through `jit_above_cost = 0` succeeds), that the contrib and XML extensions
+  load, that `xzcat` works, and that no `POSTGRES_*` variable reaches the
+  postmaster's environment.
+- Dependencies: `github/codeql-action/upload-sarif` v4.39.1, hadolint v2.15.1
+  (from v2.12.0). The devbox tools are pinned to explicit versions
+  instead of `latest` (trivy 0.74.0, syft 1.54.0, cosign 3.1.3, go-task 3.53.1),
+  so a tool bump is a reviewed `devbox.json` change and not a silent lock refresh.
 
 ### Fixed
 
+- CI: signatures and SBOM attestations now land on the image that runtimes pull.
+  BuildKit's default provenance attestation turned every per-arch push into an
+  OCI index that wrapped the image manifest. cosign signed and attested that
+  wrapper, while `:NN-latest` listed the inner manifest directly. So
+  `cosign verify` on the platform digest a runtime pulls failed with "no
+  signatures", and `cosign verify-attestation --type cyclonedx :NN-latest` (as
+  documented) failed too. Per-arch builds now use `--provenance=false
+  --sbom=false`, the push step refuses an index, digests come from the raw
+  manifest bytes instead of a buildx template, and the `manifest` job verifies
+  the index signature plus the signature and SBOM of every child before going
+  green. Docs now show `verify-attestation` against the platform digest.
 - Smoke test: identify the container and volume by the IDs Docker returns rather
   than by a `pgwolfi-smoke-$$` name built from the shell PID. Several self-hosted
   runners share one Docker daemon while each sits in its own PID namespace, so
@@ -163,3 +192,15 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   `docs/ARCHITECTURE.md`.
 
 ### Security
+
+- Re-vendored `docker-entrypoint.sh` at docker-library/postgres
+  `4f9ced0` ("Unset bootstrap credentials before exec-ing the server", #1412).
+  The entrypoint now unsets every `POSTGRES_*` variable before `exec`ing the
+  server. Previously `POSTGRES_PASSWORD` stayed in the postmaster's environment
+  (readable via `/proc/<pid>/environ` by anything running as `postgres`) and was
+  inherited by `archive_command`, `COPY … PROGRAM` and similar children.
+- CI: both GHCR-pushing jobs `docker logout` in an `always()` step, so the
+  `packages: write` token is not left in `~/.docker/config.json` on the
+  persistent self-hosted runners.
+- CI: the hadolint binary is checked against a pinned sha256 before it runs
+  (closes the TODO in `lint.yml`).

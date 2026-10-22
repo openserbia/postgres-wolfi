@@ -50,6 +50,21 @@ in terms of `${PG_MAJOR}`:
 | `gosu`                        | privilege drop in the entrypoint (no `setuid` shell)       |
 | `tzdata`                      | time-zone database                                         |
 | `bash`                        | required by the vendored entrypoint script                |
+| `xz`                          | `xzcat` for `*.sql.xz` init scripts (entrypoint contract) |
+
+**No JIT, no LLVM.** `postgresql-${PG_MAJOR}-base` hard-depends on `libLLVM`
+(~160 MB, over half of the unslimmed image) solely for the optional `llvmjit.so`
+JIT provider. The same `RUN` that installs the packages deletes `llvmjit*` and
+the JIT bitcode, then runs `scripts/apk-purge.sh libLLVM`. That helper removes
+the package plus every dependency it alone needed (`libffi`, the older
+`libxml2`): their files and their records in the apk database, so the SBOM and
+Trivy describe exactly what is on disk. It fails the build if any remaining ELF
+then has an unresolved library. With the provider absent, PostgreSQL reports
+`pg_jit_available() = false` and runs every query interpreted, as with
+`jit = off`. `test/smoke.sh` asserts that, including a query forced through the
+JIT path. A derived image that runs `apk add` will make apk reinstall `libLLVM`
+to satisfy the declared dependency. JIT still stays off, because `llvmjit.so` is
+not restored; run `apk fix postgresql-${PG_MAJOR}-base` to bring it back.
 
 `PG_MAJOR` is also set as a runtime `ENV`, so the vendored entrypoint's
 major-aware logic (data-layout / old-database checks) resolves correctly.
@@ -143,6 +158,15 @@ per-arch images into the public multi-arch list — the rolling `:NN-latest` —
 `docker buildx imagetools create`, then cosign-signs the **manifest-list (index)
 digest**. So `cosign verify :NN-latest` (which resolves to the index) passes,
 and each arch child is independently signed and SBOM-attested.
+
+Each per-arch push is a **single image manifest**, built with BuildKit's
+default attestations off (`--provenance=false --sbom=false`). Left on, BuildKit
+wraps the image in an index carrying an unsigned provenance blob. The leg then
+signs that wrapper while the list references the inner manifest, so the digest a
+runtime pulls is left unsigned. The push step fails if it ever sees an index
+again, and the `manifest` job finishes by verifying, from the registry, the
+index signature plus a signature and CycloneDX attestation on **every** child
+the list references.
 
 The job composes the list from the **digests** its build legs recorded this run,
 never from the `:NN-<arch>` tags. Those tags are stable scratch pointers,

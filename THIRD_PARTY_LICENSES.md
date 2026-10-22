@@ -14,7 +14,7 @@ https://www.postgresql.org/about/licence/
 ## docker-entrypoint.sh — MIT (vendored)
 Copyright (c) 2014 Docker, Inc.
 Source: https://github.com/docker-library/postgres
-Pinned commit: 32485831e2be041e8a36cf325751ad29c88f8c60
+Pinned commit: 4f9ced003ba58a854656ba150d146243d27ae3ac
 The full MIT text is reproduced in this repo's `LICENSE` (identical terms).
 
 ## gosu — Apache License 2.0
