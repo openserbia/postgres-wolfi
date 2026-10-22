@@ -20,10 +20,25 @@ ARG PG_MAJOR=18
 # -contrib supplies the extensions the databases use (pg_stat_statements,
 # pgcrypto, uuid-ossp, + citext/hstore/pg_trgm/... headroom) — without it a
 # restore dies on the first CREATE EXTENSION.
+# xz is listed explicitly because it owns /usr/bin/xzcat, which the entrypoint
+# uses for *.sql.xz init scripts; it otherwise arrives only as an LLVM dependency
+# and would be pruned with it below.
+#
+# JIT is dropped. postgresql-NN-base hard-depends on libLLVM (~160 MB, over half
+# the image) solely for the optional llvmjit.so provider. With llvmjit.so absent,
+# PostgreSQL disables JIT on its own (pg_jit_available() = false) and every query
+# runs interpreted, as with jit=off. So: delete the provider and its bitcode, then
+# purge libLLVM and whatever only it needed, files AND apk-database records
+# (scripts/apk-purge.sh), so the SBOM and Trivy describe what is really on disk.
+# Done in this same RUN, so the LLVM bytes never land in any layer.
 # DL3018 (pin apk versions) suppressed: the package set is parameterized by PG_MAJOR and Wolfi's
 # rolling repo IS the patch-delivery channel — pinning versions would freeze out security updates.
 # hadolint ignore=DL3018
-RUN apk add --no-cache postgresql-${PG_MAJOR} postgresql-${PG_MAJOR}-client postgresql-${PG_MAJOR}-contrib gosu tzdata bash
+RUN --mount=type=bind,source=scripts/apk-purge.sh,target=/tmp/apk-purge.sh \
+    apk add --no-cache postgresql-${PG_MAJOR} postgresql-${PG_MAJOR}-client postgresql-${PG_MAJOR}-contrib gosu tzdata bash xz \
+ && rm -rf /usr/lib/postgresql${PG_MAJOR}/llvmjit* /usr/lib/postgresql${PG_MAJOR}/bitcode \
+ && sh /tmp/apk-purge.sh libLLVM \
+ && find /usr/lib -maxdepth 1 -type d -name 'llvm-*' -empty -delete
 
 # Wolfi's postgresql-${PG_MAJOR} apk does NOT create a postgres user. Create it with the
 # busybox addgroup/adduser already present (avoids pulling the heavier `shadow`).
@@ -36,8 +51,7 @@ ENV PGDATA=/var/lib/postgresql/data \
 RUN install -d -o postgres -g postgres -m 0700 "$PGDATA" \
  && install -d -o postgres -g postgres -m 0755 /docker-entrypoint-initdb.d
 
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 5432
 STOPSIGNAL SIGINT

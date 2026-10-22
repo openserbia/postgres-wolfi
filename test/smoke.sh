@@ -70,6 +70,34 @@ docker exec "$CID" psql -U postgres -v ON_ERROR_STOP=1 \
 rows=$(docker exec "$CID" psql -U postgres -tAc "SELECT count(*) FROM t;")
 if [ "$rows" != "100" ]; then echo "FAIL: expected 100 rows, got '$rows'"; exit 1; fi
 
+# JIT is deliberately absent (the Dockerfile purges libLLVM). PostgreSQL only
+# disables JIT cleanly when llvmjit.so is gone too; if the provider were left
+# behind without libLLVM, any query crossing jit_above_cost would ERROR. Force
+# that path with jit_above_cost=0 and require it to succeed.
+echo "verifying JIT is unavailable and harmless..."
+jit=$(docker exec "$CID" psql -U postgres -tAc "SELECT pg_jit_available();")
+if [ "$jit" != "f" ]; then echo "FAIL: expected pg_jit_available() = f, got '$jit'"; exit 1; fi
+docker exec "$CID" psql -U postgres -v ON_ERROR_STOP=1 -tA \
+  -c "SET jit = on; SET jit_above_cost = 0; SELECT sum(id) FROM t;" >/dev/null
+
+# Shared libraries the extensions link against survive the LLVM purge.
+echo "verifying contrib extensions + XML load..."
+docker exec "$CID" psql -U postgres -v ON_ERROR_STOP=1 -tA \
+  -c 'CREATE EXTENSION pgcrypto; CREATE EXTENSION "uuid-ossp"; CREATE EXTENSION pg_trgm; CREATE EXTENSION xml2;' \
+  -c "SELECT digest('x', 'sha256') IS NOT NULL, uuid_generate_v4() IS NOT NULL, xmlparse(document '<a/>') IS NOT NULL;" >/dev/null
+
+# The entrypoint feeds *.sql.xz init scripts through xzcat.
+echo "verifying xzcat (init-script decompression)..."
+out=$(docker exec "$CID" sh -c 'printf "SELECT 1;" | xz | xzcat')
+if [ "$out" != "SELECT 1;" ]; then echo "FAIL: xz/xzcat round-trip returned '$out'"; exit 1; fi
+
+# The vendored entrypoint unsets POSTGRES_* before exec'ing the server, so the
+# bootstrap password is not left readable in the postmaster's environment
+# (/proc/<pid>/environ) or inherited by archive_command / COPY ... PROGRAM.
+echo "verifying bootstrap credentials are not in the server environment..."
+leaked=$(docker exec "$CID" sh -c "tr '\\0' '\\n' < /proc/1/environ | grep -c '^POSTGRES_'" || true)
+if [ "$leaked" != "0" ]; then echo "FAIL: $leaked POSTGRES_* variable(s) in the postmaster environment"; exit 1; fi
+
 echo "verifying no process runs as root (layer-1 drop)..."
 roots=$(docker top "$CID" -o pid,uid,cmd | tail -n +2 | awk '$2==0' | wc -l)
 if [ "$roots" -ne 0 ]; then echo "FAIL: $roots root process(es):"; docker top "$CID"; exit 1; fi

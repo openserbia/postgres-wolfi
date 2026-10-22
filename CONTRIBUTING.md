@@ -53,7 +53,7 @@ locally before pushing:
 | Area        | Standard                                     | Tool                |
 |-------------|----------------------------------------------|---------------------|
 | Dockerfile  | [hadolint](https://github.com/hadolint/hadolint) defaults | `hadolint Dockerfile` |
-| Shell       | [ShellCheck](https://www.shellcheck.net/) clean; `set -euo pipefail`; quote expansions | `shellcheck test/*.sh` |
+| Shell       | [ShellCheck](https://www.shellcheck.net/) clean; `set -euo pipefail`; quote expansions | `shellcheck test/*.sh scripts/*.sh` |
 | YAML / CI   | All third-party GitHub Actions **SHA-pinned** with a version comment | manual review |
 | Commits     | [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `ci:`, `docs:`, `chore:`, `test:`) | — |
 

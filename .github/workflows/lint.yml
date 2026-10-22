@@ -9,9 +9,9 @@ on:
     # paths-ignore on push ONLY. pull_request stays unfiltered so every PR is
     # always linted — keeps `lint` safe to use as a required status check (a
     # path-filtered required check leaves doc-only PRs with no status and blocks
-    # the merge). Nothing below can affect shellcheck (test/*.sh) or hadolint
-    # (Dockerfile) or the CI helper scripts (.github/scripts/*.sh), so
-    # doc/meta-only pushes to main skip linting.
+    # the merge). Nothing below can affect shellcheck (test/*.sh, scripts/*.sh)
+    # or hadolint (Dockerfile) or the CI helper scripts (.github/scripts/*.sh),
+    # so doc/meta-only pushes to main skip linting.
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
@@ -43,13 +43,18 @@ jobs:
         # shellcheck is preinstalled on ubuntu-latest runners.
         # docker-entrypoint.sh is intentionally NOT linted: it is vendored
         # verbatim from docker-library/postgres and must never be hand-edited.
-        run: shellcheck test/*.sh .github/scripts/*.sh
+        run: shellcheck test/*.sh scripts/*.sh .github/scripts/*.sh
 
       - name: hadolint
-        # Pinned hadolint release binary, run directly against the Dockerfile.
-        # TODO: add sha256sum verification of the downloaded binary before relying on this gate
+        # Pinned hadolint release binary, verified against its pinned sha256
+        # before it runs (a swapped release asset fails here instead of executing).
+        # Bump both lines together; the digest is on the release's asset list.
+        env:
+          HADOLINT_VERSION: v2.15.1
+          HADOLINT_SHA256: c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507
         run: |
           curl -fsSL -o hadolint \
-            https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+            "https://github.com/hadolint/hadolint/releases/download/$HADOLINT_VERSION/hadolint-linux-x86_64"
+          echo "$HADOLINT_SHA256  hadolint" | sha256sum -c -
           chmod +x hadolint
           ./hadolint ./Dockerfile

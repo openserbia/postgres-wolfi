@@ -29,7 +29,9 @@ states plainly where it does not.
 **Argument.** The image starts from `cgr.dev/chainguard/wolfi-base` and installs
 a deliberately small package set — `postgresql-${PG_MAJOR}` (the major is a build
 arg; CI builds 16/17/18), its `-client` and `-contrib`, plus `gosu`, `tzdata`,
-and `bash`. Critically there is **no `perl`**:
+`bash` and `xz`. LLVM (pulled in only for the optional JIT provider, over half
+the original image) is purged in the same layer, files and package records
+alike, so it is neither shipped nor listed. Critically there is **no `perl`**:
 `perl` is the source of the unfixable Debian CRITICALs in `postgres:18`, and it
 is simply not present here. Fewer packages means fewer executables, fewer
 libraries, and a smaller CVE-bearing surface than the Debian-based official
@@ -90,11 +92,16 @@ retrievable and verifiable after the fact — not just an ephemeral CI log.
   artifact, and the "Sign + attest per-arch" step runs
   `cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$DIGEST"`
   against each arch image's digest.
-- Retrieve the attested SBOM from a pulled image (the `:NN-latest` tag, or
-  preferably the `@sha256:…` digest you deploy):
+- Retrieve the attested SBOM for the platform image you run. It is bound to the
+  per-platform `@sha256:…` digest, which is what a runtime pulls out of the
+  `:NN-latest` list. The list's own index digest carries a signature, but no SBOM:
 
   ```bash
-  cosign verify-attestation ghcr.io/openserbia/postgres-wolfi:18-latest \
+  # the SBOM is attested to each platform image, not to the multi-arch list:
+  # resolve the digest for your platform first
+  DIGEST=$(docker buildx imagetools inspect ghcr.io/openserbia/postgres-wolfi:18-latest --raw \
+    | jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest')
+  cosign verify-attestation "ghcr.io/openserbia/postgres-wolfi@$DIGEST" \
     --type cyclonedx \
     --certificate-identity-regexp 'https://github.com/openserbia/postgres-wolfi/.github/workflows/build.yml@.*' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com

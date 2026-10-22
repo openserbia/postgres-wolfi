@@ -2,7 +2,7 @@
 #
 # Vendored from docker-library/postgres — docker-entrypoint.sh
 #   source : https://github.com/docker-library/postgres
-#   commit : 32485831e2be041e8a36cf325751ad29c88f8c60
+#   commit : 4f9ced003ba58a854656ba150d146243d27ae3ac
 #   license: MIT (c) Docker, Inc. — see THIRD_PARTY_LICENSES.md
 # SPDX-License-Identifier: MIT
 # Refresh deliberately: bump PIN, re-download, re-test. Do not hand-edit.
@@ -385,6 +385,8 @@ _main() {
 
 			EOM
 		fi
+
+		unset "${!POSTGRES_@}"
 	fi
 
 	exec "$@"

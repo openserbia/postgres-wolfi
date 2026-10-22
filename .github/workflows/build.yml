@@ -102,7 +102,7 @@ jobs:
       # (go-containerregistry's default keychain) — so logging in here is also what
       # authenticates Trivy's vulnerability-DB fetch.
       #
-      # Trivy 0.69's --db-repository default is
+      # Trivy's --db-repository default (unchanged through 0.74) is
       #   mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
       # i.e. the Google mirror first, GHCR as the fallback. The fallback is the leg
       # that used to be an anonymous pull, subject to GHCR's anonymous rate limit,
@@ -139,10 +139,22 @@ jobs:
       #      the same commit; this makes them come from the same base too.
       # Observed in the 2026-08-02 build: amd64 rebuilt to a new digest while arm64
       # came back byte-identical to a build from six days earlier.
+      #
+      # --provenance=false --sbom=false are load-bearing too. By default BuildKit
+      # attaches an (unsigned) provenance attestation, which turns the per-arch
+      # push into an OCI *index* wrapping the image manifest. We then signed and
+      # SBOM-attested that index, while `imagetools create` lists the inner image
+      # manifest, so the digest a runtime actually pulls from :NN-latest carried no
+      # signature and no SBOM (`cosign verify <child digest>` → "no signatures").
+      # With both off, :NN-<arch> is a single image manifest: the digest we sign is
+      # the digest the list references. Signed provenance belongs in cosign, not
+      # in an unsigned BuildKit blob.
       - name: Build
         run: |
           docker build \
             --pull \
+            --provenance=false \
+            --sbom=false \
             --build-arg PG_MAJOR="$PG_MAJOR" \
             -t "$IMAGE:$PG_MAJOR-$ARCH" \
             .
@@ -161,11 +173,24 @@ jobs:
       # .RepoDigests`, which is a local-daemon cache that can hold entries from
       # earlier pushes). This is the authoritative identity of what we just
       # published, and it is what both cosign and the manifest job consume.
+      #
+      # The digest is the sha256 of the raw manifest bytes, which is what a
+      # registry digest IS. `imagetools inspect --format '{{.Manifest.Digest}}'`
+      # is not used: newer buildx ignores that template for a plain image manifest
+      # and prints the human summary instead. The media-type check fails the leg
+      # if the push is ever an index again (see the Build step).
       - name: Push (per-arch tag)
         id: push
         run: |
           docker push "$IMAGE:$PG_MAJOR-$ARCH"
-          DIGEST=$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-$ARCH" --format '{{.Manifest.Digest}}')
+          RAW=$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-$ARCH" --raw)
+          case "$(printf '%s' "$RAW" | tr -d ' \n')" in
+            *'"mediaType":"application/vnd.oci.image.index.v1+json"'*|*'"mediaType":"application/vnd.docker.distribution.manifest.list.v2+json"'*)
+              echo "::error::$IMAGE:$PG_MAJOR-$ARCH was pushed as an index, not a single image manifest — signatures would land on the wrong digest."
+              exit 1 ;;
+          esac
+          # Hash the bytes straight off the pipe: $(…) above strips trailing newlines.
+          DIGEST="sha256:$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-$ARCH" --raw | sha256sum | cut -d' ' -f1)"
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
           mkdir -p digests
           printf '%s' "$DIGEST" > "digests/$ARCH"
@@ -192,6 +217,13 @@ jobs:
           path: digests/${{ matrix.arch }}
           retention-days: 1
           if-no-files-found: error
+
+      # Self-hosted runners persist between jobs, and `docker login` left this
+      # job's packages:write token in ~/.docker/config.json for whatever runs next
+      # under the same user. Always clear it, pass or fail.
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io
 
   manifest:
     needs: build
@@ -276,7 +308,36 @@ jobs:
       # a GitHub Release / CHANGELOG entry should record.
       - name: Sign manifest list (by digest, via devbox cosign)
         run: |
-          DIGEST=$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-latest" --format '{{.Manifest.Digest}}')
+          DIGEST="sha256:$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-latest" --raw | sha256sum | cut -d' ' -f1)"
           echo "signing index $IMAGE@$DIGEST"
           devbox run -- cosign sign --yes "$IMAGE@$DIGEST"
           echo "::notice title=Published PG $PG_MAJOR::$IMAGE:$PG_MAJOR-latest = $IMAGE@$DIGEST"
+
+      # Fail closed on what consumers actually check, from the outside: the index
+      # signature, and for EVERY platform manifest the list references, a
+      # signature and a CycloneDX SBOM attestation from this workflow. This is the
+      # gate that would have caught signatures landing on a wrapper index instead
+      # of the pulled image. The list is published by now, so a failure here does
+      # not unpublish it — it turns the run red so the gap is seen and fixed.
+      - name: Verify published list (index + every child)
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          ID="^https://github.com/$REPO/.github/workflows/build.yml@"
+          ISSUER=https://token.actions.githubusercontent.com
+          devbox run -- cosign verify "$IMAGE:$PG_MAJOR-latest" \
+            --certificate-identity-regexp "$ID" --certificate-oidc-issuer "$ISSUER" >/dev/null
+          CHILDREN=$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-latest" --raw \
+            | grep -o '"digest": *"sha256:[0-9a-f]*"' | grep -o 'sha256:[0-9a-f]*')
+          [ "$(printf '%s\n' "$CHILDREN" | wc -l)" -eq 2 ] || { echo "::error::expected exactly 2 children, got: $CHILDREN"; exit 1; }
+          for d in $CHILDREN; do
+            echo "verifying child $IMAGE@$d"
+            devbox run -- cosign verify "$IMAGE@$d" \
+              --certificate-identity-regexp "$ID" --certificate-oidc-issuer "$ISSUER" >/dev/null
+            devbox run -- cosign verify-attestation --type cyclonedx "$IMAGE@$d" \
+              --certificate-identity-regexp "$ID" --certificate-oidc-issuer "$ISSUER" >/dev/null
+          done
+
+      - name: Log out of GHCR
+        if: always()
+        run: docker logout ghcr.io

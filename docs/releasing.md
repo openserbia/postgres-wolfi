@@ -150,11 +150,14 @@ Anyone can verify an image without trusting the registry:
      --certificate-oidc-issuer https://token.actions.githubusercontent.com
    ```
 
-2. **SBOM attestation** — the CycloneDX SBOM is attested to the image by digest.
-   Pull and inspect it to audit every package and version:
+2. **SBOM attestation** — the CycloneDX SBOM is attested to each **platform**
+   image by digest (the list's index digest is signed but carries no SBOM).
+   Resolve the platform digest from the list, then inspect the SBOM:
 
    ```bash
-   cosign verify-attestation ghcr.io/openserbia/postgres-wolfi@sha256:<digest> \
+   DIGEST=$(docker buildx imagetools inspect ghcr.io/openserbia/postgres-wolfi:18-latest --raw \
+     | jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest')
+   cosign verify-attestation "ghcr.io/openserbia/postgres-wolfi@$DIGEST" \
      --type cyclonedx \
      --certificate-identity-regexp 'https://github.com/openserbia/postgres-wolfi/.github/workflows/build.yml@.*' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com
