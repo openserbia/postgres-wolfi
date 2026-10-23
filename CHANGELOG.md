@@ -25,6 +25,13 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ### Added
 
+- Package-count history. Each build leg that signs an image counts Wolfi
+  `pkg:apk` components in its CycloneDX SBOM and uploads that row. The
+  `dep-history` workflow appends the rows to `history.tsv` on the `metrics`
+  branch and redraws one amd64 chart per major, one point per published
+  rebuild, last 24. The count is not a gate, and a failure there does not
+  fail the image publish. The series starts at the next publish. Older
+  images are not backfilled. The chart page is linked from `README.md`.
 - `pg-major-probe` workflow: a weekly job that asks Wolfi whether it publishes a
   PostgreSQL major newer than the highest one in the build matrix, and opens a
   single tracking issue when one becomes installable. Standing up a new `:NN-*`
@@ -92,6 +99,20 @@ subsection and, where applicable, in a GitHub Security Advisory (see
   (from v2.12.0). The devbox tools are pinned to explicit versions
   instead of `latest` (trivy 0.74.0, syft 1.54.0, cosign 3.1.3, go-task 3.53.1),
   so a tool bump is a reviewed `devbox.json` change and not a silent lock refresh.
+- Trivy gate fails closed. `scripts/trivy-gate.sh` scans once
+  (`vuln` + `secret`, its own `.trivycache/` directory per image ref, no
+  `.trivyignore`) and `scripts/trivy-gate.awk` fails the build unless the
+  report is a Wolfi image with at least one OS package and zero CRITICAL
+  findings. HIGH is still printed and does not fail the build. A scan that
+  recognized nothing used to exit 0 and publish.
+- `task ci` starts with `task lint`. `scripts/lint.sh` runs shellcheck, the
+  Trivy gate fixtures, and pinned hadolint v2.15.1. shellcheck 0.11.0 is a
+  devbox pin.
+- Smoke test runs `/docker-entrypoint-initdb.d` (`.sql`, `.sh`, `.sql.xz`) on
+  first boot, then starts a second container on the same volume and checks
+  that the data is still there and that init does not run again.
+- Reproducing a build is written up in `docs/ARCHITECTURE.md`. A clone re-runs
+  the pipeline; the image digest still follows that day's Wolfi packages.
 
 ### Fixed
 

@@ -1,0 +1,44 @@
+{
+  "SchemaVersion": 2,
+  "Metadata": {
+    "OS": {
+      "Family": "wolfi",
+      "Name": "20230201"
+    }
+  },
+  "Results": [
+    {
+      "Target": "img (wolfi 20230201)",
+      "Class": "os-pkgs",
+      "Type": "wolfi",
+      "Packages": [
+        {
+          "ID": "bash@5.2",
+          "Name": "bash",
+          "Version": "5.2"
+        },
+        {
+          "ID": "libfoo@1.0",
+          "Name": "libfoo",
+          "Version": "1.0"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-2",
+          "PkgName": "libfoo",
+          "InstalledVersion": "1.0",
+          "Layer": {
+            "Digest": "sha256:abc"
+          },
+          "DataSource": {
+            "ID": "wolfi",
+            "Name": "wolfi"
+          },
+          "Title": "a title with a { brace",
+          "Severity": "HIGH"
+        }
+      ]
+    }
+  ]
+}

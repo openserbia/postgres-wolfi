@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: 2026 OpenSerbia
+# SPDX-License-Identifier: MIT
+
+name: dep-history
+
+# After `build` completes, fold this run's per-arch package counts into the
+# `metrics` branch and redraw the charts. The branch is not the default branch,
+# so the main ruleset (signed commits, pull requests) does not apply and
+# GITHUB_TOKEN can push it. The ruleset still rejects a push to `main`.
+#
+# `contents: write` stays on this job, not the workflow. Top-level contents
+# write is what drops OpenSSF Scorecard Token-Permissions to 0. Job-level write
+# is the same shape as `packages: write` on the build job.
+#
+# `build` does not run on pull_request. The event check stays: this job can
+# read the triggering run's artifacts, and a future pull_request trigger must
+# not publish from those. A failed sibling leg does not drop the legs that did
+# upload a count. Cancelled runs are ignored. No count artifacts is a no-op.
+on:
+  workflow_run:
+    workflows: ["build"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dep-history
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.event != 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      # List first so a run with no dep-count artifacts is a green no-op.
+      # Downloading a pattern that matches nothing fails the action.
+      - name: Look for package counts
+        id: counts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          names=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" --jq '.artifacts[].name')
+          names=$(printf '%s\n' "$names" | grep '^dep-count-' || true)
+          if [ -z "$names" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "dep-history: no dep-count artifacts for run ${RUN_ID}"
+            exit 0
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$names"
+
+      - name: Download package counts
+        if: steps.counts.outputs.found == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: dep-count-*
+          path: dep-counts
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish the package-count page
+        if: steps.counts.outputs.found == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: ./scripts/publish-dep-history.sh dep-counts

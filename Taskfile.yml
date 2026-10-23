@@ -20,10 +20,9 @@ tasks:
       - docker build --build-arg PG_MAJOR={{.PG_MAJOR}} -t {{.IMAGE}}:{{.PG_MAJOR}}-latest .
 
   scan:
-    desc: Trivy — fail on CRITICAL, report HIGH
+    desc: Trivy — fail on CRITICAL or a non-Wolfi report, print HIGH
     cmds:
-      - trivy image --exit-code 1 --severity CRITICAL {{.REF}}
-      - trivy image --severity HIGH {{.REF}}
+      - ./scripts/trivy-gate.sh '{{.REF}}'
 
   sbom:
     desc: Generate CycloneDX SBOM
@@ -35,9 +34,15 @@ tasks:
     cmds:
       - ./test/smoke.sh {{.REF}} {{.PG_MAJOR}}
 
-  ci:
-    desc: build -> scan -> sbom -> smoke (no push)
+  lint:
+    desc: shellcheck, Trivy gate fixtures, hadolint
     cmds:
+      - ./scripts/lint.sh
+
+  ci:
+    desc: lint -> build -> scan -> sbom -> smoke (no push)
+    cmds:
+      - task: lint
       - task: build
       - task: scan
       - task: sbom

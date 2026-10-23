@@ -1,0 +1,17 @@
+{
+  "SchemaVersion": 2,
+  "Metadata": {
+    "OS": {
+      "Family": "wolfi",
+      "Name": "20230201"
+    }
+  },
+  "Results": [
+    {
+      "Target": "img (wolfi 20230201)",
+      "Class": "os-pkgs",
+      "Type": "wolfi",
+      "Packages": []
+    }
+  ]
+}

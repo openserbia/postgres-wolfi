@@ -1,7 +1,9 @@
 # postgres-wolfi
 
 [![build](https://github.com/openserbia/postgres-wolfi/actions/workflows/build.yml/badge.svg)](https://github.com/openserbia/postgres-wolfi/actions/workflows/build.yml)
+[![lint](https://github.com/openserbia/postgres-wolfi/actions/workflows/lint.yml/badge.svg)](https://github.com/openserbia/postgres-wolfi/actions/workflows/lint.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/openserbia/postgres-wolfi/badge)](https://scorecard.dev/viewer/?uri=github.com/openserbia/postgres-wolfi)
+[![trivy](https://img.shields.io/badge/trivy-CRITICAL%20gate-blue?logo=trivy&logoColor=white)](SECURITY.md#what-you-can-and-cannot-expect-security-model)
 [![cosign signed](https://img.shields.io/badge/cosign-signed-blueviolet?logo=sigstore&logoColor=white)](#verify-the-signature)
 [![16 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=16-latest&label=16%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
 [![17 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=17-latest&label=17%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
@@ -53,6 +55,11 @@ is the sum of the layer blobs in the published manifest, which is what
 `docker images` prints the uncompressed size, which is larger. The badge
 follows the tag and changes when the weekly rebuild does.
 
+The [package-count charts](https://github.com/openserbia/postgres-wolfi/blob/metrics/README.md)
+track Wolfi `pkg:apk` components for each published rebuild. One amd64 chart
+per major, one point per rebuild, and a table of both arches. The page is
+filled by the next build after this change is on `main`.
+
 ```bash
 docker pull ghcr.io/openserbia/postgres-wolfi:18-latest
 ```
@@ -81,6 +88,10 @@ cosign verify ghcr.io/openserbia/postgres-wolfi:18-latest \
   --certificate-identity-regexp 'https://github.com/openserbia/postgres-wolfi/.github/workflows/build.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+A local rebuild is not a byte-for-byte copy of that signed image. Wolfi's
+package index moves on purpose. What a clone can and cannot reproduce is in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#reproducing-a-build).
 
 ## Licensing
 

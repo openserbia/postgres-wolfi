@@ -1,0 +1,31 @@
+{
+  "SchemaVersion": 2,
+  "Metadata": {
+    "OS": {
+      "Family": "wolfi",
+      "Name": "20230201"
+    }
+  },
+  "Results": [
+    {
+      "Target": "img (wolfi 20230201)",
+      "Class": "os-pkgs",
+      "Type": "wolfi",
+      "Packages": [
+        {
+          "Name": "libfoo",
+          "Version": "1.2.3"
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-1",
+          "PkgName": "libfoo",
+          "InstalledVersion": "1.2.3",
+          "Severity": "CRITICAL",
+          "Title": "remote overflow"
+        }
+      ]
+    }
+  ]
+}

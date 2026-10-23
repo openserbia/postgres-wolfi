@@ -105,8 +105,10 @@ What genuinely mitigates this today:
   key handoff.
 - **In-repo infrastructure.** Everything needed to build and release lives in
   the repo: `Dockerfile`, `Taskfile.yml`, the GitHub Actions workflows, and the
-  `devbox.json` / `devbox.lock` tool pins. The project is **reproducible by
-  anyone** who clones it.
+  `devbox.json` / `devbox.lock` tool pins. Anyone who clones it can re-run that
+  pipeline. The image digest still follows the Wolfi packages of the day;
+  `docs/ARCHITECTURE.md` ("Reproducing a build") records which parts are pinned
+  and which parts move.
 
 **Roadmap.** Recruiting a second maintainer is an explicit goal, both to remove
 the bus-factor-1 risk and to make consistent two-person review (the code-review

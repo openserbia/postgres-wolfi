@@ -1,0 +1,22 @@
+{
+  "SchemaVersion": 2,
+  "Metadata": {
+    "OS": {
+      "Family": "debian",
+      "Name": "12"
+    }
+  },
+  "Results": [
+    {
+      "Target": "img (debian 12)",
+      "Class": "os-pkgs",
+      "Type": "debian",
+      "Packages": [
+        {
+          "Name": "bash",
+          "Version": "5.2"
+        }
+      ]
+    }
+  ]
+}

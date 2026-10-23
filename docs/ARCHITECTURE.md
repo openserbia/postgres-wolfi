@@ -95,17 +95,12 @@ The container starts as **root** only long enough to fix ownership of the data
 directory (which may be a freshly-mounted volume), then permanently drops to the
 unprivileged `postgres` user before the database ever runs:
 
-```
-container start (root)
-        │
-        ▼
-docker-entrypoint.sh  ── fix ownership of $PGDATA ──┐
-        │                                           │
-        ▼                                           │
-  gosu  postgres (70:70) ◄──────────────────────────┘
-        │
-        ▼
-  postmaster runs NON-ROOT
+```mermaid
+flowchart TD
+  start["container start, root"] --> entry["docker-entrypoint.sh"]
+  entry --> own["fix ownership of $PGDATA"]
+  own --> drop["gosu postgres, uid:gid 70:70"]
+  drop --> post["postmaster runs non-root"]
 ```
 
 `gosu` is used instead of a `setuid` helper so there is no privilege-escalation
@@ -127,31 +122,22 @@ exercises real hardware. Every stage below operates on that leg's built
 image, and signing/attestation are done **by digest** (not by tag) so the
 signature binds to exact bytes:
 
-```
-  docker build
-        │
-        ▼
-  Trivy scan ───── CRITICAL? ──► FAIL build
-        │  (HIGH reported, non-gating)
-        ▼
-  SBOM  (syft → CycloneDX, sbom.cdx.json)
-        │
-        ▼
-  smoke test
-        │
-        ▼
-  push → GHCR  (per-arch scratch tag :NN-<arch>)
-        │
-        ▼
-  cosign sign   (keyless, by digest)
-        │
-        ▼
-  cosign attest (SBOM, by digest)
+```mermaid
+flowchart TD
+  build["docker build"] --> scan["Trivy scan"]
+  scan -->|CRITICAL, or not a Wolfi package set| fail["fail the build"]
+  scan -->|"Wolfi packages, no CRITICAL; HIGH reported"| sbom["SBOM: syft to CycloneDX, sbom.cdx.json"]
+  sbom --> smoke["smoke test"]
+  smoke --> push["push to GHCR, per-arch scratch tag :NN-arch"]
+  push --> sign["cosign sign, keyless, by digest"]
+  sign --> attest["cosign attest the SBOM, by digest"]
 ```
 
-A CRITICAL finding fails the build, so a vulnerable image is never pushed. The
-`ci` Taskfile target runs `build → scan → sbom → smoke` locally with **no push**,
-mirroring everything up to the publish step.
+A CRITICAL finding fails the build, and so does a report that is not a Wolfi
+image with at least one OS package. A scan that recognized nothing used to
+exit 0. HIGH findings are printed and do not fail the build. The
+`ci` Taskfile target runs `lint → build → scan → sbom → smoke` locally with
+**no push**, mirroring the lint workflow plus everything up to the publish step.
 
 Once all arch legs of a major succeed, a separate **`manifest` job** stitches the
 per-arch images into the public multi-arch list — the rolling `:NN-latest` — with
@@ -176,6 +162,15 @@ artifact only after it has passed scan+smoke, pushed, signed and attested — so
 the artifact's existence *is* the leg's pass certificate, and a major missing
 either arch publishes nothing.
 
+After that upload, the leg counts `pkg:apk` components in the attested CycloneDX
+SBOM and stores the row as `dep-count-<pg>-<arch>`. The count is bookkeeping for
+the charts on the `metrics` branch: it runs with `continue-on-error`, so a
+failure does not fail the leg and does not withhold the digest token. The
+`dep-history` workflow merges those rows and redraws the charts. `metrics` is
+not the default branch, so the `main` ruleset does not cover it and the
+workflow token can push the charts there. The ruleset still rejects a push to
+`main` from that token.
+
 > [!CAUTION]
 > **Never enable GHCR's "delete untagged versions" retention on this package.**
 > A published image and the corresponding child of the `:NN-latest` manifest list
@@ -189,10 +184,45 @@ either arch publishes nothing.
 > consumer has ever recorded, not just old ones. See the GC note in
 > [`releasing.md`](releasing.md).
 
+## Reproducing a build
+
+Anyone who clones a commit can re-run the pipeline. That run does not produce
+the image digest the weekly build published for that commit.
+
+```bash
+git checkout <commit>
+devbox shell
+docker build --pull --provenance=false --sbom=false \
+  --build-arg PG_MAJOR=18 -t local:18 .
+devbox run -- task scan sbom smoke REF=local:18 PG_MAJOR=18
+```
+
+Pinned, so the recipe itself does not drift:
+
+- the `Dockerfile` and `scripts/apk-purge.sh`
+- `docker-entrypoint.sh`, vendored at the commit recorded in
+  `THIRD_PARTY_LICENSES.md`
+- tool versions in `devbox.lock`, and the hadolint binary pinned by sha256 in
+  `scripts/lint.sh`
+- third-party Actions, pinned by commit SHA in the workflows
+
+Not pinned, on purpose. `FROM cgr.dev/chainguard/wolfi-base:latest` and
+`apk add` take whatever Wolfi is publishing at build time (the `Dockerfile`
+suppresses hadolint `DL3007` and `DL3018` for this reason). The weekly rebuild
+exists to pick up those patches. `--pull` is what stops a runner from reusing
+a stale base. Two builds on different days, or two builds that straddle an
+index update, get different digests. Compare them with
+`docker image inspect --format '{{.Id}}'`. A mismatch is the expected result.
+
+The digest GHCR serves is the one the build workflow signed. A local image is
+a different artifact and carries no project signature. Verify the published
+tag with the `cosign verify` command in `README.md`.
+
 ## Supply-chain controls
 
-- **Trivy CRITICAL gate** — build fails on any CRITICAL OS/library CVE; HIGH is
-  reported for visibility but does not gate.
+- **Trivy CRITICAL gate** — build fails on any CRITICAL vulnerability or
+  secret, and on a report that is not a Wolfi image with OS packages. HIGH is
+  reported for visibility but does not gate. See `scripts/trivy-gate.sh`.
 - **CycloneDX SBOM attested to the image** — `sbom.cdx.json` generated by syft
   and bound to the image via `cosign attest`, so consumers can audit every
   package/version against the exact artifact they pulled.
@@ -237,7 +267,8 @@ Local workflow is **devbox** (pins the toolchain) + **Taskfile** (the tasks):
 | Task   | Does                                                          |
 |--------|--------------------------------------------------------------|
 | `build`| build the image                                              |
+| `lint` | shellcheck, Trivy gate fixtures, hadolint (`scripts/lint.sh`) |
 | `scan` | Trivy scan (CRITICAL gate)                                   |
 | `sbom` | generate the CycloneDX SBOM with syft                        |
-| `smoke`| run the smoke test (`test/smoke.sh`)                         |
-| `ci`   | `build → scan → sbom → smoke` (no push) — local mirror of CI |
+| `smoke`| boot, init scripts, SQL, restart on the same volume          |
+| `ci`   | `lint → build → scan → sbom → smoke` (no push)               |

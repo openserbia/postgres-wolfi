@@ -28,8 +28,9 @@ a successful run:
 3. pushes a **per-arch scratch tag** `:NN-<arch>` and cosign-signs + SBOM-attests
    the resulting image **by digest**.
 
-Pipeline order **per leg** is: build → Trivy scan (fails on CRITICAL; HIGH
-reported, non-gating) → CycloneDX SBOM (syft, `sbom.cdx.json`) → smoke test →
+Pipeline order **per leg** is: build → Trivy scan (fails on CRITICAL, or when
+the report is not a Wolfi image with OS packages; HIGH reported, non-gating) →
+CycloneDX SBOM (syft, `sbom.cdx.json`) → smoke test →
 push → cosign keyless sign → cosign attest SBOM. Legs are independent
 (`fail-fast: false`): a leg that fails Trivy or the smoke test publishes nothing
 and does not block the others — there is no broken release.

@@ -64,15 +64,21 @@ out of band per the security policy.
 ### 3. No shipped CRITICALs
 
 **Argument.** A rebuild is only allowed to publish if it is clean of CRITICAL
-OS/library vulnerabilities. The Trivy scan runs with `--exit-code 1
---severity CRITICAL`, so any CRITICAL fails the `scan` task, which fails the CI
-step, which stops the run **before** the push step. HIGH is scanned and reported
-in the same task but is non-gating (see residual risks).
+vulnerabilities and secrets, and only if Trivy actually recognized the image.
+`scripts/trivy-gate.sh` runs one scan and fails the `scan` task unless the
+report is a Wolfi image with at least one OS package and zero CRITICAL
+findings. That task fails the CI step, which stops the run **before** the push
+step. HIGH is scanned and reported in the same task but is non-gating (see
+residual risks). A Trivy exit code of 0 used to be treated as clean, including
+when the scan saw no packages.
 
 **Evidence.**
-- [`Taskfile.yml`](../Taskfile.yml) — `scan` task: first command is the
-  CRITICAL gate (`trivy image --exit-code 1 --severity CRITICAL …`); second
-  reports HIGH without `--exit-code`.
+- [`scripts/trivy-gate.sh`](../scripts/trivy-gate.sh) and
+  [`scripts/trivy-gate.awk`](../scripts/trivy-gate.awk) — one `trivy image`
+  invocation (`--scanners vuln,secret`, per-ref cache, no `.trivyignore`),
+  then the awk gate. [`test/trivy-gate.sh`](../test/trivy-gate.sh) checks the
+  parser against fixture reports.
+- [`Taskfile.yml`](../Taskfile.yml) — `scan` runs that script.
 - [`.github/workflows/build.yml`](../.github/workflows/build.yml) — the
   "Scan (CRITICAL gate) + SBOM + smoke" step runs `devbox run -- task scan …`
   and sits *above* the "Push" step, so a non-zero exit blocks publication.

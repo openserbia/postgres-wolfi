@@ -98,9 +98,9 @@ marked as such with a reason.
 | `build` | Met | Reproducible from-source image build: `docker build` driven by `task build`. `Dockerfile`; `Taskfile.yml` |
 | `build_common_tools` | Met | Standard tooling: Docker, GitHub Actions, devbox, go-task — all common, FLOSS. `Taskfile.yml`; `.github/workflows/build.yml`; `devbox.json` |
 | `build_floss_tools` | Met | The build (Docker, Wolfi apk, go-task) runs entirely on FLOSS tools. `Dockerfile`; `Taskfile.yml` |
-| `test` | Met | `test/smoke.sh` boots the image on a throwaway volume and asserts init, SQL (100-row round-trip), and that no process runs as root. `test/smoke.sh` |
+| `test` | Met | `test/smoke.sh` boots the image on a throwaway volume and asserts init scripts (`.sql`, `.sh`, `.sql.xz`), SQL (100-row round-trip), restart on the same volume, and that no process runs as root. `test/smoke.sh` |
 | `test_invocation` | Met | One documented command: `task smoke` / `./test/smoke.sh <image>`. `Taskfile.yml`; `CONTRIBUTING.md` |
-| `test_most` | Met | The smoke test covers the project's core function (a working, non-root PostgreSQL container). For a thin assembly project this exercises the major behaviour; expansion is on the roadmap. `test/smoke.sh`; `docs/ROADMAP.md` "Expand smoke tests" |
+| `test_most` | Met | The smoke test covers the project's core function (a working, non-root PostgreSQL container): init scripts, SQL, and a restart on the same volume. `test/smoke.sh` |
 | `test_continuous_integration` | Met | CI runs build → scan → sbom → smoke on every push and PR. `.github/workflows/build.yml`; `.github/workflows/lint.yml` |
 | `test_policy` | Met | Mandatory written test policy: new functionality must add tests in the same change. `CONTRIBUTING.md` "Test policy" |
 | `tests_are_added` | Met | Policy requires tests with new functionality and regression checks for bug fixes; enforced in review. `CONTRIBUTING.md`; `.github/PULL_REQUEST_TEMPLATE.md` (checklist item) |
@@ -155,7 +155,7 @@ on top of passing. **One MUST is currently unmet — see `code_of_conduct`.**
 | `governance` | Met | `GOVERNANCE.md` describes decision-making (lazy consensus → maintainer decides), roles, and maintainership. |
 | `roles_responsibilities` | Met | Maintainer vs contributor roles and rights are spelled out. `GOVERNANCE.md` "Roles & responsibilities" |
 | `access_continuity` | Met | Continuity plan: org-owned repo (owners can grant access without the current maintainer), keyless signing tied to workflow OIDC (no personal key to lose), all build/release infra in-repo. `GOVERNANCE.md` "Access & continuity" |
-| `bus_factor` | **Unmet (honest gap)** | Bus factor is currently **1** (single active maintainer `OCharnyshevich`). Mitigations stated honestly: org ownership enables handover/recovery; signing is workflow-OIDC, not a personal key; the full pipeline is reproducible from the repo. Recruiting a second maintainer is an explicit roadmap goal. `GOVERNANCE.md` "Access & continuity"; `docs/ROADMAP.md` "Reduce bus factor" |
+| `bus_factor` | **Unmet (honest gap)** | Bus factor is currently **1** (single active maintainer `OCharnyshevich`). Mitigations stated honestly: org ownership enables handover/recovery; signing is workflow-OIDC, not a personal key; the full pipeline can be re-run from the repo (image bytes follow the Wolfi index; `docs/ARCHITECTURE.md` "Reproducing a build"). Recruiting a second maintainer is an explicit roadmap goal. `GOVERNANCE.md` "Access & continuity"; `docs/ROADMAP.md` "Reduce bus factor" |
 
 ### Documentation
 
@@ -185,7 +185,7 @@ on top of passing. **One MUST is currently unmet — see `code_of_conduct`.**
 | Criterion | Status | Justification & evidence |
 |-----------|--------|--------------------------|
 | `signed_releases` | Met | Every pushed image is cosign keyless-signed and its CycloneDX SBOM is cosign-attested, both **by digest**. `.github/workflows/build.yml` "Sign + attest"; `docs/releasing.md` |
-| `build_reproducible` | **Partial / in progress (honest)** | Build is fully scripted and pinned (`Dockerfile`, `devbox.lock`, SHA-pinned actions, commit-pinned entrypoint), so a clean re-run is deterministic given the same upstream packages. **However**, Wolfi apk packages float to "current" at build time, so byte-identical reproducibility across days is **not** yet guaranteed; documenting/verifying reproducibility is an explicit roadmap item. Do not claim full reproducibility. `Dockerfile`; `devbox.lock`; `docs/ROADMAP.md` "Document reproducible-build verification" |
+| `build_reproducible` | **Partial (honest)** | Build is fully scripted and pinned (`Dockerfile`, `devbox.lock`, SHA-pinned actions, commit-pinned entrypoint), so a clean re-run is deterministic given the same upstream packages. Wolfi apk packages float to "current" at build time, so byte-identical reproducibility across days is not guaranteed. The limits are written down. Do not claim full reproducibility. `docs/ARCHITECTURE.md` "Reproducing a build"; `Dockerfile`; `devbox.lock` |
 | `two_person_review` | **Unmet at the "all changes" level (SHOULD)** | Solo maintainer: **external PRs** are always reviewed by the maintainer (author ≠ reviewer, so the goal holds for those); the **maintainer's own changes** may self-merge after green CI because no second reviewer exists. CODEOWNERS routes review; CI gating is the compensating control. Stated honestly. `GOVERNANCE.md` "Code review model"; `.github/CODEOWNERS` |
 | `static_analysis_common_vulnerabilities` (silver) | Met | Trivy (CVE scan, CRITICAL gate) + OpenSSF Scorecard (supply-chain). `Taskfile.yml`; `.github/workflows/scorecard.yml` |
 | `hardened_site` / `sites_https` | Met | Project "sites" are GitHub + GHCR, both HTTPS/TLS only and outside this project's control to weaken. `README.md` (GHCR pull/verify over TLS) |

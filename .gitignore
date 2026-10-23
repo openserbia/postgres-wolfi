@@ -2,6 +2,7 @@
 sbom.cdx.json
 results.sarif
 .trivycache/
+.hadolint/
 *.tmp
 
 # IDE / local tooling state

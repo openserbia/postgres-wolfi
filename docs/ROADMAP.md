@@ -39,15 +39,13 @@ who decides or how decisions are made, it ties back to `GOVERNANCE.md`.
   may require operators to own the data volume up front; the trade-offs and the
   before/after privilege model belong in `docs/ARCHITECTURE.md`. Until this
   lands, the runtime is exactly as described in `README.md` and `SECURITY.md`.
-- **Lint CI, gating.** Add `hadolint` (Dockerfile) and `shellcheck` (shell) to
-  CI as a **blocking** check, wired into the existing Taskfile (`task ci`) so it
-  runs locally too. Note: `docker-entrypoint.sh` is vendored verbatim and is
-  exempt from local style fixes — see the vendoring rule in `CONTRIBUTING.md`.
-- **Document reproducible-build verification.** Write up how a third party can
-  rebuild from a pinned commit and check they get the same image, and what is
-  vs. is not reproducible given upstream package drift. This is a
-  `docs/ARCHITECTURE.md` topic, cross-linked from the verification steps in
-  `README.md`.
+- **Lint CI, gating — delivered.** `hadolint` and `shellcheck` are a blocking
+  check in `.github/workflows/lint.yml`. `scripts/lint.sh` is that check, and
+  `task ci` runs it before the image build. `docker-entrypoint.sh` stays
+  exempt — see the vendoring rule in `CONTRIBUTING.md`.
+- **Document reproducible-build verification — delivered.** What a rebuild from
+  a pinned commit does and does not reproduce is in `docs/ARCHITECTURE.md`
+  ("Reproducing a build"), linked from the verification steps in `README.md`.
 
 ## Mid-term (plausible within ~12 months)
 
@@ -64,10 +62,12 @@ who decides or how decisions are made, it ties back to `GOVERNANCE.md`.
   same tag contract (`docs/ARCHITECTURE.md`). Remaining follow-on here is
   build-cost / cache tuning and watching the arm64 leg's reliability under the
   weekly load.
-- **Expand smoke tests.** Grow `test/smoke.sh` beyond "does it boot" to cover
-  restart/persistence across container recreation and `/docker-entrypoint-initdb.d`
-  init-script execution, so regressions in the data-volume and bootstrap paths
-  are caught before push.
+- **Expand smoke tests — delivered.** `test/smoke.sh` checks the server major,
+  a 100-row write, JIT off, contrib and XML, `xzcat`, no `POSTGRES_*` in the
+  postmaster environment, and no root processes. It also runs
+  `/docker-entrypoint-initdb.d` (`.sql`, executable `.sh`, `.sql.xz`) on first
+  boot, then starts a second container on the same volume and checks that the
+  data is still there and that init does not run again.
 
 ## Long-term (beyond ~12 months / externally gated)
 

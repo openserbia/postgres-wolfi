@@ -34,12 +34,13 @@ Tooling is pinned with [devbox](https://www.jetify.com/devbox) and orchestrated
 with [Taskfile](https://taskfile.dev):
 
 ```bash
-devbox shell        # go-task, trivy, syft, cosign at pinned versions
-task build          # build :18-latest and :18-<date> (default; PG_MAJOR=17 etc. to switch)
-task scan           # Trivy: fail on CRITICAL, report HIGH
+devbox shell        # go-task, trivy, syft, cosign, shellcheck at pinned versions
+task lint           # shellcheck, Trivy gate fixtures, hadolint
+task build          # build :18-latest (default; PG_MAJOR=17 etc. to switch)
+task scan           # Trivy: fail on CRITICAL or a non-Wolfi report, print HIGH
 task sbom           # generate CycloneDX SBOM
-task smoke          # boot + SQL + non-root assertion
-task ci             # build -> scan -> sbom -> smoke (no push)
+task smoke          # boot, init scripts, SQL, restart on the same volume
+task ci             # lint -> build -> scan -> sbom -> smoke (no push)
 ```
 
 Run `task ci` before opening a PR.
@@ -53,7 +54,7 @@ locally before pushing:
 | Area        | Standard                                     | Tool                |
 |-------------|----------------------------------------------|---------------------|
 | Dockerfile  | [hadolint](https://github.com/hadolint/hadolint) defaults | `hadolint Dockerfile` |
-| Shell       | [ShellCheck](https://www.shellcheck.net/) clean; `set -euo pipefail`; quote expansions | `shellcheck test/*.sh scripts/*.sh` |
+| Shell       | [ShellCheck](https://www.shellcheck.net/) clean; `set -euo pipefail`; quote expansions | `shellcheck test/*.sh scripts/*.sh .github/scripts/*.sh` |
 | YAML / CI   | All third-party GitHub Actions **SHA-pinned** with a version comment | manual review |
 | Commits     | [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `ci:`, `docs:`, `chore:`, `test:`) | — |
 
@@ -66,9 +67,12 @@ Refresh it deliberately by bumping the pin, re-downloading, and re-testing.
 This project has a **mandatory** testing policy: as major new functionality is
 added, automated tests that check that functionality **must** be added in the
 same change. The test suite (`test/smoke.sh`) boots the image on a throwaway
-volume and verifies init, basic SQL, and that no process runs as root. CI runs
-it on every push and pull request. PRs that change runtime behaviour without a
-corresponding test will be asked to add one.
+volume and verifies init scripts (`.sql`, `.sh`, `.sql.xz`), basic SQL, that
+the data survives a new container on the same volume, and that no process runs
+as root. CI runs it on pull requests, on the weekly schedule, on manual runs,
+and on pushes to `main` that change the image. A docs-only push does not. PRs
+that change runtime behaviour without a corresponding test will be asked to
+add one.
 
 For bug fixes, add a regression check where practical so the bug cannot
 silently return.

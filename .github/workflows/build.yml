@@ -55,6 +55,9 @@ env:
 #                only exist when a leg fully passed, and refuses to publish a major
 #                missing either arch — so a manifest list can never mix arches
 #                across runs or commits.
+#   - package counts are uploaded after the digest token. They are not a gate.
+#     dep-history.yml merges them onto the metrics branch. A count failure
+#     cannot turn the leg red and cannot withhold the digest artifact.
 #
 # Tagging: the ONLY public tag is the rolling :NN-latest. There is no dated
 # :NN-YYYYMMDD tag — a specific build is pinned by its @sha256:… digest, which is
@@ -159,6 +162,9 @@ jobs:
             -t "$IMAGE:$PG_MAJOR-$ARCH" \
             .
 
+      # task scan runs scripts/trivy-gate.sh. Trivy exit 0 is not enough: the
+      # report must be a Wolfi image with OS packages, and any CRITICAL
+      # vulnerability or secret fails the leg before push. HIGH is printed.
       - name: Scan (CRITICAL gate) + SBOM + smoke
         run: devbox run -- task scan sbom smoke PG_MAJOR="$PG_MAJOR" REF="$IMAGE:$PG_MAJOR-$ARCH"
 
@@ -203,18 +209,47 @@ jobs:
           devbox run -- cosign sign --yes "$IMAGE@$DIGEST"
           devbox run -- cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "$IMAGE@$DIGEST"
 
-      # LAST step of the leg, deliberately. Steps only run when every preceding
-      # step succeeded, so the mere EXISTENCE of this artifact certifies that this
-      # (major, arch) passed the CRITICAL scan + smoke gate, pushed, and was signed
-      # and SBOM-attested. The manifest job treats it as exactly that success
-      # token: no artifact -> no manifest list for that major. Uploading it right
-      # after `docker push` would instead let a leg that failed `cosign sign` feed
-      # an unsigned child into the published list.
+      # Success token for this leg. Steps only run when every preceding step
+      # succeeded, so the mere EXISTENCE of this artifact certifies that this
+      # (major, arch) passed the CRITICAL scan + smoke gate, pushed, and was
+      # signed and SBOM-attested. The manifest job treats it as exactly that
+      # success token: no artifact -> no manifest list for that major.
+      # Uploading it right after `docker push` would instead let a leg that
+      # failed `cosign sign` feed an unsigned child into the published list.
+      # The package-count steps below are not part of the token. They cannot
+      # withhold it, and a failure there does not fail the leg.
       - name: Upload digest (manifest input / leg success token)
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: digest-${{ matrix.pg }}-${{ matrix.arch }}
           path: digests/${{ matrix.arch }}
+          retention-days: 1
+          if-no-files-found: error
+
+      # Chart bookkeeping only. continue-on-error so a bad SBOM row cannot turn
+      # a signed image into a red leg. The upload runs only when the script
+      # wrote a row; its own failure is also ignored.
+      - name: Count Wolfi packages
+        id: depcount
+        continue-on-error: true
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p counts
+          ./scripts/dep-count.sh sbom.cdx.json \
+            "$GITHUB_RUN_ID" \
+            "$(date -u +%Y-%m-%d)" \
+            "$ARCH" \
+            "$DIGEST" \
+            "$PG_MAJOR" > counts/row.tsv
+
+      - name: Upload package count
+        if: steps.depcount.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: dep-count-${{ matrix.pg }}-${{ matrix.arch }}
+          path: counts/row.tsv
           retention-days: 1
           if-no-files-found: error
 
