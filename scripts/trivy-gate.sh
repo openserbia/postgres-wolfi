@@ -11,9 +11,10 @@
 #
 # The cache directory is per image ref under .trivycache/, so concurrent matrix
 # legs on one runner do not share ~/.cache/trivy. The vulnerability DB is still
-# updated on every run. A repo .trivyignore is not read: the gate passes an
-# ignore file that is never created, and a missing file makes Trivy apply no
-# ignores. Unfixed CRITICALs still fail (there is no --ignore-unfixed).
+# updated on every run. A repo .trivyignore is not read: the gate writes an
+# empty ignore file and passes that path. The file has to exist, because
+# Trivy 0.74 exits when --ignorefile names a missing path. An empty file
+# applies no ignores. Unfixed CRITICALs still fail (there is no --ignore-unfixed).
 set -eu
 
 if [ "$#" -ne 1 ] || [ -z "$1" ]; then
@@ -33,6 +34,7 @@ unset TRIVY_CACHE_DIR TRIVY_EXIT_CODE TRIVY_IGNOREFILE TRIVY_IGNORE_UNFIXED \
   TRIVY_OFFLINE_SCAN TRIVY_SEVERITY TRIVY_SKIP_DB_UPDATE TRIVY_QUIET || true
 
 mkdir -p "$cache"
+: > "$cache/no-ignore"
 trap 'rm -f "$report"' EXIT
 
 trivy image \

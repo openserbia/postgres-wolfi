@@ -57,8 +57,8 @@ follows the tag and changes when the weekly rebuild does.
 
 The [package-count charts](https://github.com/openserbia/postgres-wolfi/blob/metrics/README.md)
 track Wolfi `pkg:apk` components for each published rebuild. One amd64 chart
-per major, one point per rebuild, and a table of both arches. The page is
-filled by the next build after this change is on `main`.
+per major, one point per rebuild, and a table of both arches. A point is
+added after each rebuild that passes the scan.
 
 ```bash
 docker pull ghcr.io/openserbia/postgres-wolfi:18-latest

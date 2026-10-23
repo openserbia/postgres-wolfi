@@ -23,6 +23,12 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ## [Unreleased]
 
+### Fixed
+
+- Trivy gate writes an empty ignore file before the scan. Trivy 0.74 exits
+  when `--ignorefile` names a path that does not exist, so every build leg
+  died before the scan and the `metrics` branch was never created.
+
 ### Added
 
 - Package-count history. Each build leg that signs an image counts Wolfi
