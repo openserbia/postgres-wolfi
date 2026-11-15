@@ -58,6 +58,15 @@ want=$(printf '300\t2026-10-13\t18\tamd64\t3\t18.6-r6\t%s' "$Df")
 [ "$got" = "$want" ] || fail "dep-count row: [$got]"
 echo "ok dep-count"
 
+# syft's real layout: compact JSON on ONE line, and every bom-ref also starts
+# with pkg:apk/. Counting only the first purl per line found 1 package and no
+# postgresql-18; counting bom-refs would double every package.
+printf '%s' '{"bomFormat":"CycloneDX","components":[{"bom-ref":"pkg:apk/wolfi/bash@5.2.37-r2?arch=x86_64&package-id=aa","type":"library","name":"bash","purl":"pkg:apk/wolfi/bash@5.2.37-r2?arch=x86_64&distro=wolfi"},{"bom-ref":"pkg:apk/wolfi/postgresql-18@18.6-r6?arch=x86_64&package-id=bb","type":"library","name":"postgresql-18","purl":"pkg:apk/wolfi/postgresql-18@18.6-r6?arch=x86_64"},{"bom-ref":"pkg:apk/wolfi/xz@5.8.1-r0?package-id=cc","type":"library","name":"xz","purl":"pkg:apk/wolfi/xz@5.8.1-r0?arch=x86_64"}]}' > "$tmp/sbom-compact.json"
+got=$("$count" "$tmp/sbom-compact.json" 300 2026-10-13 amd64 "$Df" 18)
+want=$(printf '300\t2026-10-13\t18\tamd64\t3\t18.6-r6\t%s' "$Df")
+[ "$got" = "$want" ] || fail "dep-count compact row: [$got]"
+echo "ok dep-count compact one-line sbom"
+
 cat > "$tmp/no-pg.json" <<'EOF'
 { "components": [ { "purl": "pkg:apk/wolfi/bash@5.2.37-r2" }, { "purl": "pkg:apk/wolfi/postgresql-17@17.10-r1" } ] }
 EOF

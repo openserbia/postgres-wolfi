@@ -8,7 +8,7 @@
 # run_id, date, major, arch, package count, postgresql-N version, digest.
 # A package is a component whose purl is pkg:apk/…. The version comes from the
 # purl of postgresql-<major> itself, not the -client or -contrib packages.
-# Syft's JSON is pretty-printed, one field per line.
+# Syft writes compact JSON on one line; pretty-printed input works too.
 set -eu
 
 if [ "$#" -ne 6 ]; then
@@ -55,10 +55,10 @@ if [ ! -f "$sbom" ]; then
 fi
 
 row=$(awk -v major="$major" '
-function take(line,    i, p, name, ver) {
-  i = index(line, "pkg:apk/")
+function take(m,    i, p, name, ver) {
+  i = index(m, "pkg:apk/")
   if (i == 0) return
-  p = substr(line, i)
+  p = substr(m, i)
   sub(/".*/, "", p)
   sub(/^pkg:apk\/[^\/]*\//, "", p)
   name = p
@@ -72,7 +72,16 @@ function take(line,    i, p, name, ver) {
   pkgs++
   if (name == "postgresql-" major) pg = ver
 }
-/"purl"[[:space:]]*:[[:space:]]*"pkg:apk\// { take($0) }
+# syft writes the whole SBOM on ONE line, so walk every purl on the line, not
+# just the first. Anchor on the "purl" key: syft bom-ref values also start with
+# pkg:apk/ and would count each package twice.
+{
+  s = $0
+  while (match(s, /"purl"[[:space:]]*:[[:space:]]*"pkg:apk\/[^"]*"/)) {
+    take(substr(s, RSTART, RLENGTH))
+    s = substr(s, RSTART + RLENGTH)
+  }
+}
 END {
   if (pkgs < 1 || pg == "") exit 1
   print pkgs "\t" pg

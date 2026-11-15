@@ -42,12 +42,14 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ### Fixed
 
-- Package counts are recorded again. `scripts/dep-count.sh` used `[^/]` inside
-  an awk regex literal. BusyBox awk on the self-hosted runners ends the regex
-  at that `/`, so the step failed on every published leg and the
-  `continue-on-error` step only left a failure annotation. The slash is now
-  escaped, and the charts on the `metrics` branch get rows from the next
-  release on.
+- Package counts are recorded again. `scripts/dep-count.sh` failed on every
+  published leg, and because the step is `continue-on-error` it only left a
+  failure annotation, so the `metrics` charts never got a row. Two bugs:
+  BusyBox awk on the self-hosted runners ended a regex literal at the `/` in
+  `[^/]`, and the script read only the first purl on each line while syft
+  writes the whole SBOM on one line. The slash is escaped, every
+  `"purl":"pkg:apk/…"` on a line is counted (not the look-alike `bom-ref`
+  values), and a test covers syft's compact layout.
 - The `manifest` job now checks out the repo. It runs `devbox run -- cosign`
   and needs `devbox.json`, but it worked only when the self-hosted runner still
   held a build leg's workspace. Run 43719232246 got a clean runner, pushed
