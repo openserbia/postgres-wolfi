@@ -29,12 +29,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# First boot runs these once. The directory must be traversable by uid 70
-# (mode 0700 from mktemp is not). The restart mounts the same directory: a
-# second run of 01-marker.sql would fail the primary key and the entrypoint
-# would never reach the real server.
+# No bind mounts anywhere in this script. The CI job runs in a container that
+# talks to the host's Docker daemon, so a path from mktemp exists only inside
+# the job; the daemon mounts an empty host directory in its place. Files go in
+# through stdin or `docker cp`, which stream them over the API instead.
+#
+# First boot runs these once. The restart copies the same files in: a second
+# run of 01-marker.sql would fail the primary key and the entrypoint would
+# never reach the real server.
 INITDIR=$(mktemp -d)
-chmod 755 "$INITDIR"
 cat > "$INITDIR/01-marker.sql" <<'EOF'
 CREATE TABLE smoke_init(id int primary key, src text);
 INSERT INTO smoke_init(id, src) VALUES (1, 'sql');
@@ -48,10 +51,10 @@ chmod 755 "$INITDIR/02-marker.sh"
 cat > "$INITDIR/03-marker.sql" <<'EOF'
 INSERT INTO smoke_init(id, src) VALUES (3, 'xz');
 EOF
-docker run --rm --entrypoint /usr/bin/xz \
-  -v "$INITDIR":/work:ro \
-  "$IMAGE" -c /work/03-marker.sql > "$INITDIR/03-marker.sql.xz"
+docker run -i --rm --entrypoint /usr/bin/xz "$IMAGE" -c \
+  < "$INITDIR/03-marker.sql" > "$INITDIR/03-marker.sql.xz"
 rm -f "$INITDIR/03-marker.sql"
+chmod 644 "$INITDIR/01-marker.sql" "$INITDIR/03-marker.sql.xz"
 
 # The official entrypoint runs a TEMPORARY localhost-only server to execute the
 # init scripts, then shuts it down and starts the real server. pg_isready can
@@ -106,13 +109,19 @@ assert_no_bootstrap_env() {
   fi
 }
 
+# Create, copy the init scripts in, then start: the entrypoint must see them on
+# its first look. docker cp writes them as root with the modes set above; the
+# entrypoint starts as root, so they are readable before the privilege drop.
 start_container() {
-  CID=$(docker run -d --memory 1g \
+  CID=$(docker create --memory 1g \
     -e POSTGRES_PASSWORD="$PW" \
     -v "$VOL":/var/lib/postgresql/data \
-    -v "$INITDIR":/docker-entrypoint-initdb.d:ro \
     "$IMAGE")
   echo "container=${CID:0:12} volume=$VOL"
+  docker cp "$INITDIR/01-marker.sql" "$CID":/docker-entrypoint-initdb.d/
+  docker cp "$INITDIR/02-marker.sh" "$CID":/docker-entrypoint-initdb.d/
+  docker cp "$INITDIR/03-marker.sql.xz" "$CID":/docker-entrypoint-initdb.d/
+  docker start "$CID" >/dev/null
 }
 
 VOL=$(docker volume create)

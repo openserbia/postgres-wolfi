@@ -25,6 +25,12 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ### Fixed
 
+- The smoke test no longer uses bind mounts. The CI job runs in a container
+  that talks to the host's Docker daemon, so the daemon mounted an empty host
+  directory in place of the job's temp directory, the init-script setup
+  failed, and every build leg has failed since 2026-10-23 without publishing.
+  The test now compresses through stdin and copies the init scripts in with
+  `docker cp` before the container starts.
 - Trivy gate writes an empty ignore file before the scan. Trivy 0.74 exits
   when `--ignorefile` names a path that does not exist, so every build leg
   died before the scan and the `metrics` branch was never created.
