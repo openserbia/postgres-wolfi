@@ -23,6 +23,13 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ## [Unreleased]
 
+### Changed
+
+- A push to `main` no longer releases. The build workflow still builds, scans
+  and smoke-tests every leg on push, but it pushes, signs and publishes
+  `:NN-latest` only on the weekly schedule or a manual dispatch.
+  `dep-history` skips push runs too, since they record no package counts.
+
 ### Removed
 
 - The `:16-latest` and `:17-latest` lines are retired and no longer rebuilt.

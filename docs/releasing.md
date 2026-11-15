@@ -14,8 +14,13 @@ annotation on top of an image that CI already built and pushed.
 The build workflow (`.github/workflows/build.yml`) runs:
 
 - **weekly**, every **Monday 06:17 UTC** (so daily-patched Wolfi packages flow in);
-- on **push to `main`**;
-- on **manual dispatch** (`workflow_dispatch`).
+- on **manual dispatch** (`workflow_dispatch`);
+- on **push to `main`**, as a check only.
+
+Only the schedule and a manual dispatch **release**. A push to `main` builds,
+scans and smoke-tests every leg, then stops: it pushes no image, signs nothing,
+and leaves `:NN-latest` where it was. To ship a change before Monday, run the
+workflow by hand (`gh workflow run build`).
 
 The workflow fans out as a **matrix over the supported majors** (`NN` ∈ 18 —
 add 19 once Wolfi ships `postgresql-19`; 16 and 17 were retired on

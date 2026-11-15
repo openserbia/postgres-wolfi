@@ -112,8 +112,10 @@ is staged as a deliberate breaking change rather than folded in silently.
 
 ## Build & release pipeline
 
-GitHub Actions, triggered **weekly (Monday 06:17 UTC)**, **on push to `main`**,
-and **manually (workflow_dispatch)**. The build fans out as a **matrix over the
+GitHub Actions, triggered **weekly (Monday 06:17 UTC)**, **manually
+(workflow_dispatch)**, and **on push to `main`**. Only the first two release: a
+push runs build, scan, SBOM and smoke, and skips push, sign, attest and the
+manifest list. The build fans out as a **matrix over the
 supported majors (currently `18`) × arches (`amd64`, `arm64`)** —
 `fail-fast: false`, so one leg failing never aborts the others. Each leg builds
 **natively** on a self-hosted runner of its architecture — routed by GitHub's

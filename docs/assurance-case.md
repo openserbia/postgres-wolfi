@@ -50,14 +50,16 @@ image.
 
 **Argument.** Wolfi packages are daily-patched upstream. A static image would
 drift; this one does not, because CI rebuilds from scratch **weekly** (Monday
-06:17 UTC), plus on every push to `main` and on manual dispatch. Each rebuild
+06:17 UTC), plus on manual dispatch. (A push to `main` builds and tests but
+does not publish.) Each rebuild
 re-pulls the current Wolfi packages, so daily upstream fixes reach each
 `:NN-latest` line (18) within at most a week, and CRITICALs are handled
 out of band per the security policy.
 
 **Evidence.**
 - [`.github/workflows/build.yml`](../.github/workflows/build.yml) — `on.schedule`
-  cron `17 6 * * 1`, plus `workflow_dispatch` and `push: [main]`.
+  cron `17 6 * * 1`, plus `workflow_dispatch`; `push: [main]` runs with
+  every publish step gated off.
 - [`SECURITY.md`](../SECURITY.md) — "Supported versions" table (the `:NN-latest`
   lines rebuilt weekly) and the response process (CRITICALs expedited off-cadence).
 

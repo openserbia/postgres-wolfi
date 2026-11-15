@@ -3,10 +3,15 @@
 name: build
 
 on:
+  # Releases come ONLY from the weekly schedule and manual dispatch. A push to
+  # main builds, scans and smoke-tests every leg but publishes nothing: no
+  # per-arch push, no signature, no :NN-latest manifest, no package count.
+  # Every step that writes to GHCR is gated on `github.event_name != 'push'`.
+  # To release a change before Monday, run this workflow by hand.
   schedule:
-    - cron: "17 6 * * 1"   # weekly, Monday 06:17 UTC — ALWAYS rebuilds (see note below)
-  workflow_dispatch:
-  push:
+    - cron: "17 6 * * 1"   # weekly, Monday 06:17 UTC — ALWAYS rebuilds + releases
+  workflow_dispatch:       # manual release
+  push:                    # verify only, never releases
     branches: [main]
     # paths-ignore is scoped to `push` ONLY. GitHub never applies path filters to
     # `schedule` or `workflow_dispatch`, so the weekly cron rebuild (the channel
@@ -189,6 +194,7 @@ jobs:
       # if the push is ever an index again (see the Build step).
       - name: Push (per-arch tag)
         id: push
+        if: github.event_name != 'push'
         run: |
           docker push "$IMAGE:$PG_MAJOR-$ARCH"
           RAW=$(docker buildx imagetools inspect "$IMAGE:$PG_MAJOR-$ARCH" --raw)
@@ -204,6 +210,7 @@ jobs:
           printf '%s' "$DIGEST" > "digests/$ARCH"
 
       - name: Sign + attest per-arch (by digest, via devbox cosign)
+        if: github.event_name != 'push'
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
@@ -221,6 +228,7 @@ jobs:
       # The package-count steps below are not part of the token. They cannot
       # withhold it, and a failure there does not fail the leg.
       - name: Upload digest (manifest input / leg success token)
+        if: github.event_name != 'push'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: digest-${{ matrix.pg }}-${{ matrix.arch }}
@@ -233,6 +241,7 @@ jobs:
       # wrote a row; its own failure is also ignored.
       - name: Count Wolfi packages
         id: depcount
+        if: github.event_name != 'push'
         continue-on-error: true
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
@@ -272,7 +281,8 @@ jobs:
     # so a healthy major still publishes when a sibling major is broken. This
     # matrix's own leg for a major fails closed unless BOTH of that major's arch
     # legs uploaded a digest artifact this run — see "Assert both arches passed".
-    if: ${{ !cancelled() }}
+    # Never on push: a push only verifies (see the `on:` note at the top).
+    if: ${{ !cancelled() && github.event_name != 'push' }}
     runs-on: [self-hosted, X64]
     # Pure registry work — no build, no scan. Typical run is ~20s.
     timeout-minutes: 10
