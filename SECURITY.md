@@ -45,7 +45,7 @@ next weekly rebuild and, for CRITICALs, out of band.
 
 **You can expect:**
 
-- A glibc PostgreSQL image — majors **16, 17, 18**, each its own tag line — with
+- A glibc PostgreSQL image — major **18**, on its own tag line — with
   **no `perl`** and a minimal Wolfi package set, rebuilt **weekly** so
   daily-patched Wolfi packages flow through.
 - A **Trivy-gated** build that **fails on CRITICAL** OS/library vulnerabilities;
@@ -67,16 +67,23 @@ next weekly rebuild and, for CRITICALs, out of band.
   upstream entrypoint contract; protecting those secrets is on the deployer.
 - A patched image for HIGH/MEDIUM CVEs *faster* than the weekly cadence (only
   CRITICALs are expedited).
-- Backports to any major line outside the supported set (currently `16.x`,
-  `17.x`, `18.x`).
+- Backports to any major line outside the supported set (currently `18.x`).
+- Fixes for the retired `:16-latest` and `:17-latest` lines. Their public Wolfi
+  packages are frozen (see below), so their last images keep their known CVEs.
 
 ## Supported versions
 
 | Tag line                                  | Supported           |
 |-------------------------------------------|---------------------|
-| `:18-latest`, `:17-latest`, `:16-latest`  | ✅ rebuilt weekly   |
-| `@sha256:…` digest pins (NN ∈ 16, 17, 18) | ✅ remain pullable; repull `:NN-latest` for fixes |
+| `:18-latest`                              | ✅ rebuilt weekly   |
+| `@sha256:…` digest pins (NN = 18)         | ✅ remain pullable; repull `:18-latest` for fixes |
+| `:17-latest`, `:16-latest` and their digests | ❌ retired 2026-11-15; still pullable, never rebuilt |
 | any major older than 16, or a newer major before Wolfi ships it | ❌ not built |
+
+The 16 and 17 lines were retired because Wolfi moved `postgresql-16` and
+`postgresql-17` to Chainguard's paid enterprise repo on 2026-06-08. The public
+packages stopped at `16.14-r1` and `17.10-r1`, so no rebuild can pick up their
+security fixes. Upgrade to 18.
 
 ## Assurance case
 

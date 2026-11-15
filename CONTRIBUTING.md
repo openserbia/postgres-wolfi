@@ -5,7 +5,7 @@ SPDX-License-Identifier: MIT
 # Contributing to postgres-wolfi
 
 Thanks for your interest. This is a small, security-focused container image
-project: PostgreSQL images (majors 16, 17, 18) built on Chainguard Wolfi.
+project: PostgreSQL images (major 18) built on Chainguard Wolfi.
 Contributions of any
 size are welcome — bug reports, documentation fixes, hardening improvements, and
 CI changes.
@@ -36,7 +36,7 @@ with [Taskfile](https://taskfile.dev):
 ```bash
 devbox shell        # go-task, trivy, syft, cosign, shellcheck at pinned versions
 task lint           # shellcheck, Trivy gate fixtures, hadolint
-task build          # build :18-latest (default; PG_MAJOR=17 etc. to switch)
+task build          # build :18-latest (default; PG_MAJOR=NN to switch)
 task scan           # Trivy: fail on CRITICAL or a non-Wolfi report, print HIGH
 task sbom           # generate CycloneDX SBOM
 task smoke          # boot, init scripts, SQL, restart on the same volume

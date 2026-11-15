@@ -23,7 +23,22 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ## [Unreleased]
 
+### Removed
+
+- The `:16-latest` and `:17-latest` lines are retired and no longer rebuilt.
+  On 2026-06-08 Wolfi moved `postgresql-16` and `postgresql-17` to Chainguard's
+  paid enterprise repo, so the public packages stopped at `16.14-r1` and
+  `17.10-r1`. Their last images (published 2026-11-15) report 96 HIGH findings
+  each from PostgreSQL CVEs fixed only in later minor releases that public
+  Wolfi will not ship. The tags stay pullable for existing deployments but
+  will not be patched. Upgrade to `:18-latest`.
+
 ### Fixed
+
+- The `manifest` job now checks out the repo. It runs `devbox run -- cosign`
+  and needs `devbox.json`, but it worked only when the self-hosted runner still
+  held a build leg's workspace. Run 43719232246 got a clean runner, pushed
+  `:18-latest`, and failed before signing it.
 
 - The smoke test no longer uses bind mounts. The CI job runs in a container
   that talks to the host's Docker daemon, so the daemon mounted an empty host

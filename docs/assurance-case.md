@@ -28,7 +28,7 @@ states plainly where it does not.
 
 **Argument.** The image starts from `cgr.dev/chainguard/wolfi-base` and installs
 a deliberately small package set — `postgresql-${PG_MAJOR}` (the major is a build
-arg; CI builds 16/17/18), its `-client` and `-contrib`, plus `gosu`, `tzdata`,
+arg; CI builds 18), its `-client` and `-contrib`, plus `gosu`, `tzdata`,
 `bash` and `xz`. LLVM (pulled in only for the optional JIT provider, over half
 the original image) is purged in the same layer, files and package records
 alike, so it is neither shipped nor listed. Critically there is **no `perl`**:
@@ -52,7 +52,7 @@ image.
 drift; this one does not, because CI rebuilds from scratch **weekly** (Monday
 06:17 UTC), plus on every push to `main` and on manual dispatch. Each rebuild
 re-pulls the current Wolfi packages, so daily upstream fixes reach each
-`:NN-latest` line (16/17/18) within at most a week, and CRITICALs are handled
+`:NN-latest` line (18) within at most a week, and CRITICALs are handled
 out of band per the security policy.
 
 **Evidence.**

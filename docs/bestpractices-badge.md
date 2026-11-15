@@ -49,7 +49,7 @@ marked as such with a reason.
 
 | Criterion | Status | Justification & evidence |
 |-----------|--------|--------------------------|
-| `description_good` | Met | README opens with a clear one-paragraph description (PostgreSQL 16/17/18 on Chainguard Wolfi, perl-free, daily-patched, Trivy-gated, cosign-signed). `README.md` |
+| `description_good` | Met | README opens with a clear one-paragraph description (PostgreSQL 18 on Chainguard Wolfi, perl-free, daily-patched, Trivy-gated, cosign-signed). `README.md` |
 | `interact` | Met | Contribution and interaction channel documented (GitHub Issues). `CONTRIBUTING.md` "How to interact" |
 | `contribution` | Met | `CONTRIBUTING.md` documents the full workflow: devbox + Taskfile, `task ci` before PR, fork/branch, PR + checklist. |
 | `contribution_requirements` | Met | Coding standards (hadolint, ShellCheck, SHA-pinned actions, Conventional Commits), test policy, and DCO are all stated. `CONTRIBUTING.md` "Coding standards" + "Test policy" + "DCO" |

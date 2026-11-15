@@ -39,7 +39,7 @@ can/cannot-expect contract.
 
 `FROM cgr.dev/chainguard/wolfi-base`, then a single `apk add` layer. The major
 is selected by a **`PG_MAJOR` build arg** (default `18`); the CI matrix builds
-one image per supported major (`16`, `17`, `18`), so the table below is written
+one image per supported major (currently `18`), so the table below is written
 in terms of `${PG_MAJOR}`:
 
 | Package                       | Why                                                        |
@@ -114,7 +114,7 @@ is staged as a deliberate breaking change rather than folded in silently.
 
 GitHub Actions, triggered **weekly (Monday 06:17 UTC)**, **on push to `main`**,
 and **manually (workflow_dispatch)**. The build fans out as a **matrix over the
-supported majors (`16`, `17`, `18`) × arches (`amd64`, `arm64`)** —
+supported majors (currently `18`) × arches (`amd64`, `arm64`)** —
 `fail-fast: false`, so one leg failing never aborts the others. Each leg builds
 **natively** on a self-hosted runner of its architecture — routed by GitHub's
 built-in `X64` / `ARM64` labels — so no QEMU is involved and the smoke test
@@ -239,7 +239,7 @@ tag with the `cosign verify` command in `README.md`.
 
 Published under `ghcr.io/openserbia/postgres-wolfi`:
 
-Each supported major (`NN` ∈ 16, 17, 18) publishes exactly one public tag:
+Each supported major (`NN` ∈ 18) publishes exactly one public tag:
 
 | Reference       | Meaning                                                            |
 |-----------------|-------------------------------------------------------------------|

@@ -43,7 +43,7 @@ env:
 # actions.
 #
 # Multi-version × multi-arch:
-#   - `build`    fans out over majors (16/17/18) × arches (amd64/arm64). Each leg
+#   - `build`    fans out over the supported majors (18) × arches (amd64/arm64). Each leg
 #                builds NATIVELY on a self-hosted runner of its arch — routed by
 #                GitHub's built-in `X64` / `ARM64` labels — scans + smokes on that
 #                real hardware, then pushes a per-arch tag and signs/attests it by
@@ -76,8 +76,10 @@ jobs:
       matrix:
         # Add "19" the day Wolfi publishes postgresql-19 (PG19 GA ~autumn 2026);
         # until then `apk add postgresql-19` 404s, so it stays out to avoid a
-        # perma-red leg.
-        pg: ["16", "17", "18"]
+        # perma-red leg. 16 and 17 were retired on 2026-11-15: Wolfi moved them
+        # to Chainguard's paid enterprise repo on 2026-06-08, so the public
+        # packages are frozen and will not receive security fixes.
+        pg: ["18"]
         arch: ["amd64", "arm64"]
         include:
           # Route each arch to a matching self-hosted runner via GitHub's
@@ -277,10 +279,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pg: ["16", "17", "18"]
+        pg: ["18"]
     env:
       PG_MAJOR: ${{ matrix.pg }}
     steps:
+      # devbox needs devbox.json (and its lock) to run cosign. Without a checkout
+      # this job only worked when the runner still had a build leg's workspace
+      # on disk; run 43719232246 got a clean one and left 18-latest unsigned.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Log in to GHCR
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

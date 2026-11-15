@@ -5,7 +5,7 @@ version: '3'
 
 vars:
   IMAGE: ghcr.io/openserbia/postgres-wolfi
-  # Default major; override per invocation, e.g. `task ci PG_MAJOR=17`.
+  # Default major; override per invocation, e.g. `task ci PG_MAJOR=19` once Wolfi ships it.
   # CI drives one major per matrix leg this way.
   PG_MAJOR: '18'
   # Image ref that scan/sbom/smoke operate on. Defaults to the locally-built

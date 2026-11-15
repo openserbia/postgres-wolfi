@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 OpenSerbia
 # SPDX-License-Identifier: MIT
-# postgres-wolfi — PostgreSQL (major via PG_MAJOR build arg; 16/17/18) on
+# postgres-wolfi — PostgreSQL (major via PG_MAJOR build arg; 18) on
 # Chainguard Wolfi (glibc, perl-free, daily-patched).
 # Layer-1 non-root: the entrypoint starts as root, fixes PGDATA ownership, then
 # gosu-drops to the postgres user (70:70) to run the postmaster. Fully-rootless
@@ -10,8 +10,9 @@
 FROM cgr.dev/chainguard/wolfi-base:latest
 
 # PG_MAJOR selects the PostgreSQL major line. Default 18; the CI build matrix
-# overrides it per image (--build-arg PG_MAJOR=16|17|18). Only majors Wolfi
-# currently ships resolve — postgresql-{16,17,18} as of 2026-06; add 19 once
+# overrides it per image (--build-arg PG_MAJOR=NN). CI builds 18 only. 16 and
+# 17 still resolve, but Wolfi moved them to Chainguard's paid repo on 2026-06-08
+# and the public packages are frozen, so those lines are retired. Add 19 once
 # Wolfi packages it.
 ARG PG_MAJOR=18
 

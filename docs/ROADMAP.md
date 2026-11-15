@@ -23,7 +23,7 @@ who decides or how decisions are made, it ties back to `GOVERNANCE.md`.
   if it goes red it gets fixed before anything else here is touched. Failures
   flow through the same triage as a security report (`SECURITY.md`).
 - **Track minor releases across the supported majors.** Roll each `:NN-latest`
-  (`NN` ∈ 16, 17, 18) forward across its own `NN.x` bugfix releases via the weekly
+  (`NN` ∈ 18) forward across its own `NN.x` bugfix releases via the weekly
   build matrix; never jump major lines on any of these tags. See the tag contract
   in `README.md`.
 - **Keep pins current.** Actions are SHA-pinned and devbox tools are version-pinned;

@@ -21,7 +21,7 @@ the integrity of the project and its releases. The maintainer may:
 
 - review and merge pull requests;
 - cut releases and move the `:NN-latest` tags for each supported major
-  (16, 17, 18), recording the published digest for each marked snapshot;
+  (currently 18), recording the published digest for each marked snapshot;
 - triage and handle security reports (see [`SECURITY.md`](SECURITY.md));
 - steward the release identity: the keyless cosign signing flow and the GitHub
   Actions workflow OIDC identity used to sign and attest images;

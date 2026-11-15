@@ -17,8 +17,9 @@ The build workflow (`.github/workflows/build.yml`) runs:
 - on **push to `main`**;
 - on **manual dispatch** (`workflow_dispatch`).
 
-The workflow fans out as a **matrix over the supported majors** (`NN` ∈ 16, 17,
-18 — add 19 once Wolfi ships `postgresql-19`) **× arches** (`amd64`, `arm64`),
+The workflow fans out as a **matrix over the supported majors** (`NN` ∈ 18 —
+add 19 once Wolfi ships `postgresql-19`; 16 and 17 were retired on
+2026-11-15, see `SECURITY.md`) **× arches** (`amd64`, `arm64`),
 one leg per `(major, arch)`. Each leg runs **natively** on a self-hosted runner of
 its architecture (routed by GitHub's built-in `X64` / `ARM64` labels). For a leg,
 a successful run:

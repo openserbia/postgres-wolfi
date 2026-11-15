@@ -5,15 +5,12 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/openserbia/postgres-wolfi/badge)](https://scorecard.dev/viewer/?uri=github.com/openserbia/postgres-wolfi)
 [![trivy](https://img.shields.io/badge/trivy-CRITICAL%20gate-blue?logo=trivy&logoColor=white)](SECURITY.md#what-you-can-and-cannot-expect-security-model)
 [![cosign signed](https://img.shields.io/badge/cosign-signed-blueviolet?logo=sigstore&logoColor=white)](#verify-the-signature)
-[![16 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=16-latest&label=16%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
-[![17 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=17-latest&label=17%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
 [![18 amd64](https://ghcr-badge.egpl.dev/openserbia/postgres-wolfi/size?tag=18-latest&label=18%20amd64&color=blue)](https://github.com/openserbia/postgres-wolfi/pkgs/container/postgres-wolfi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 <!-- TODO: register at bestpractices.dev, then replace PROJECT_ID and uncomment -->
 <!-- [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID) -->
 
-A self-built **PostgreSQL** container image — majors **16, 17, 18**, each on its
-own tag line — on [Chainguard Wolfi](https://github.com/wolfi-dev)
+A self-built **PostgreSQL 18** container image on [Chainguard Wolfi](https://github.com/wolfi-dev)
 (glibc, **no `perl`**, daily-patched packages). Built to escape the unfixable
 Debian `perl` CRITs in the official `postgres:18` image while staying free
 (no Chainguard subscription) and self-owned. Rebuilt weekly, Trivy-gated on
@@ -23,14 +20,14 @@ CRITICAL, cosign-signed, with a CycloneDX SBOM.
 
 `ghcr.io/openserbia/postgres-wolfi`
 
-Each supported major publishes exactly one tag (`NN` ∈ `16`, `17`, `18`):
+Each supported major publishes exactly one tag (`NN` ∈ `18`):
 
 | Reference        | Meaning                                                                                                          |
 |------------------|------------------------------------------------------------------------------------------------------------------|
 | `:NN-latest`     | Rolling — newest build of the **NN.x** line (only ever moves across *minor* bugfix releases, never a major jump) |
 | `@sha256:…`      | Immutable — pin / rollback to an exact build                                                                      |
 
-So `:18-latest`, `:17-latest`, and `:16-latest` track each line independently.
+Each major line moves independently; a new major gets its own `:NN-latest`.
 There is intentionally **no `:latest`** and **no bare `:NN`** — a database must
 never be pulled by an unbounded floating tag.
 
@@ -44,6 +41,18 @@ docker buildx imagetools inspect ghcr.io/openserbia/postgres-wolfi:18-latest \
 ```
 
 then deploy `ghcr.io/openserbia/postgres-wolfi@sha256:…` and record that digest.
+
+### Retired: `:16-latest` and `:17-latest`
+
+The 16 and 17 lines were retired on 2026-11-15. On 2026-06-08 Wolfi moved
+`postgresql-16` and `postgresql-17` to Chainguard's paid enterprise repo, so the
+public packages stopped at `16.14-r1` and `17.10-r1` and get no more security
+fixes. Their last builds carry dozens of HIGH PostgreSQL CVEs that only the
+next upstream minor release fixes.
+
+The tags stay in the registry so existing deployments keep pulling, but they
+are **no longer rebuilt** and will never be patched. Move to `:18-latest`
+(a major upgrade: `pg_upgrade` or dump/restore).
 
 Every tag is a **multi-arch manifest list** (`linux/amd64` + `linux/arm64`),
 each architecture built and smoke-tested natively; `docker pull` resolves to your
@@ -66,7 +75,7 @@ docker pull ghcr.io/openserbia/postgres-wolfi:18-latest
 
 ## Runtime
 
-- **PostgreSQL 16.x / 17.x / 18.x** (whichever tag line you pull), postmaster runs
+- **PostgreSQL 18.x**, postmaster runs
   **non-root** as user `postgres` (**uid:gid `70:70`**).
   The entrypoint starts as root, fixes `$PGDATA` ownership, then `gosu`-drops to `postgres`.
 - Drop-in env contract with the official image (`POSTGRES_PASSWORD`, `POSTGRES_USER`,
