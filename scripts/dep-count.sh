@@ -60,7 +60,7 @@ function take(line,    i, p, name, ver) {
   if (i == 0) return
   p = substr(line, i)
   sub(/".*/, "", p)
-  sub(/^pkg:apk\/[^/]*\//, "", p)
+  sub(/^pkg:apk\/[^\/]*\//, "", p)
   name = p
   sub(/[@?].*/, "", name)
   ver = ""

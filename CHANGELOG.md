@@ -42,6 +42,12 @@ subsection and, where applicable, in a GitHub Security Advisory (see
 
 ### Fixed
 
+- Package counts are recorded again. `scripts/dep-count.sh` used `[^/]` inside
+  an awk regex literal. BusyBox awk on the self-hosted runners ends the regex
+  at that `/`, so the step failed on every published leg and the
+  `continue-on-error` step only left a failure annotation. The slash is now
+  escaped, and the charts on the `metrics` branch get rows from the next
+  release on.
 - The `manifest` job now checks out the repo. It runs `devbox run -- cosign`
   and needs `devbox.json`, but it worked only when the self-hosted runner still
   held a build leg's workspace. Run 43719232246 got a clean runner, pushed
